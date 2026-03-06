@@ -7,6 +7,14 @@ on:
         description: "Expertise to search for (e.g. terraformer, kubernetes, ansible)"
         required: true
         default: "terraformer"
+      langs:
+        description: "Comma-separated language tags to filter/label (e.g. bash,hcl,powershell). Leave blank for all."
+        required: false
+        default: ""
+      platforms:
+        description: "Comma-separated platform tags to filter/label (e.g. aws,azure,github-actions,terraform-cloud). Leave blank for all."
+        required: false
+        default: ""
       dry_run:
         description: "Dry run (print actions, do not create issues)"
         type: boolean
@@ -18,7 +26,7 @@ on:
 
 permissions:
   issues: write
-  contents: read
+  contents: write
 
 jobs:
   discover:
@@ -38,17 +46,50 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           EXPERTISE="${{ inputs.expertise || 'terraformer' }}"
+          LANGS="${{ inputs.langs || '' }}"
+          PLATFORMS="${{ inputs.platforms || '' }}"
           DRY_RUN_FLAG=""
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             DRY_RUN_FLAG="--dry-run"
           fi
-          python3 scripts/discover.py --expertise "$EXPERTISE" $DRY_RUN_FLAG
+          LANG_FLAG=""
+          if [ -n "$LANGS" ]; then
+            LANG_FLAG="--langs $LANGS"
+          fi
+          PLATFORM_FLAG=""
+          if [ -n "$PLATFORMS" ]; then
+            PLATFORM_FLAG="--platforms $PLATFORMS"
+          fi
+          python3 scripts/discover.py --expertise "$EXPERTISE" $DRY_RUN_FLAG $LANG_FLAG $PLATFORM_FLAG
+
+      - name: Commit updated skill registry
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sources/skill-registry.json
+          if git diff --cached --quiet; then
+            echo "No registry changes to commit."
+          else
+            git commit -m "chore(registry): update skill-registry after discovery run [expertise=${{ inputs.expertise || 'terraformer' }}]"
+            if ! git push origin HEAD; then
+              echo "::warning::Failed to push registry update. The skill-registry.json changes will be lost for this run." >&2
+            fi
+          fi
 
       - name: Summary
         run: |
           echo "## Discovery complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Expertise: \`${{ inputs.expertise || 'terraformer' }}\`" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ inputs.langs }}" ]; then
+            echo "Lang filter: \`${{ inputs.langs }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -n "${{ inputs.platforms }}" ]; then
+            echo "Platform filter: \`${{ inputs.platforms }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Open the [Issues tab](https://github.com/${{ github.repository }}/issues?q=label%3Astatus%2Fdiscovered) to review discovered resources." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

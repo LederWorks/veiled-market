@@ -1,6 +1,8 @@
 ---
 name: terraform-import
 description: Import existing cloud resources into Terraform / OpenTofu state so they can be managed as code. Generates configuration scaffolding where possible.
+platforms: [aws, azure, gcp, oci, digitalocean, vsphere, terraform-cloud]
+languages: [hcl, bash]
 ---
 
 When asked to import existing infrastructure into Terraform / OpenTofu:

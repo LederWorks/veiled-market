@@ -1,6 +1,8 @@
 ---
 name: terraform-plan
 description: Preview infrastructure changes by running terraform plan (or tofu plan). Summarises additions, changes, and destructions before any resources are modified.
+platforms: [aws, azure, gcp, oci, digitalocean, vsphere, terraform-cloud, hcp-vault, github-actions, azure-devops, gitlab-ci, jenkins]
+languages: [hcl, bash]
 ---
 
 When asked to plan Terraform / OpenTofu changes, follow these steps:

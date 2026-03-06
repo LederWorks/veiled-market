@@ -1,6 +1,8 @@
 ---
 name: terraform-state
 description: Inspect and manage Terraform / OpenTofu state. Supports listing, showing, moving, removing, and pulling state entries safely.
+platforms: [aws, azure, gcp, oci, digitalocean, vsphere, terraform-cloud, hcp-vault]
+languages: [hcl, bash]
 ---
 
 When asked to manage or inspect Terraform / OpenTofu state:

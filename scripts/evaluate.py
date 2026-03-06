@@ -21,6 +21,9 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional
 
+sys.path.insert(0, os.path.dirname(__file__))
+from registry import Registry, content_sha, extract_platform_tags_from_labels  # noqa: E402
+
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "LederWorks/veiled-market")
@@ -320,13 +323,21 @@ def write_draft_plugin(expertise: str, draft: Dict, output_dir: str) -> None:
     for skill in draft.get("skills", []):
         skill_dir = os.path.join(output_dir, "skills", skill.get("name", "unnamed-skill"))
         os.makedirs(skill_dir, exist_ok=True)
-        skill_md = f"""---
-name: {skill.get('name', 'unnamed')}
-description: {skill.get('description', '')}
----
-
-{skill.get('instructions', '_Instructions to be added._')}
-"""
+        # Build platforms/languages frontmatter lines only when values are present
+        platforms = skill.get("platforms", [])
+        languages = skill.get("languages", [])
+        extra_fm = "".join([
+            f"platforms: {json.dumps(platforms)}\n" if platforms else "",
+            f"languages: {json.dumps(languages)}\n" if languages else "",
+        ])
+        skill_md = (
+            f"---\n"
+            f"name: {skill.get('name', 'unnamed')}\n"
+            f"description: {skill.get('description', '')}\n"
+            f"{extra_fm}"
+            f"---\n\n"
+            f"{skill.get('instructions', '_Instructions to be added._')}\n"
+        )
         with open(os.path.join(skill_dir, "SKILL.md"), "w") as f:
             f.write(skill_md)
 
@@ -336,14 +347,21 @@ description: {skill.get('description', '')}
     for agent in draft.get("agents", []):
         agent_name = agent.get("name", "agent")
         tools = json.dumps(agent.get("tools", ["bash", "view"]))
-        agent_md = f"""---
-name: {agent_name}
-description: {agent.get('description', '')}
-tools: {tools}
----
-
-{agent.get('system_prompt', '_System prompt to be added._')}
-"""
+        platforms = agent.get("platforms", [])
+        languages = agent.get("languages", [])
+        extra_fm = "".join([
+            f"platforms: {json.dumps(platforms)}\n" if platforms else "",
+            f"languages: {json.dumps(languages)}\n" if languages else "",
+        ])
+        agent_md = (
+            f"---\n"
+            f"name: {agent_name}\n"
+            f"description: {agent.get('description', '')}\n"
+            f"tools: {tools}\n"
+            f"{extra_fm}"
+            f"---\n\n"
+            f"{agent.get('system_prompt', '_System prompt to be added._')}\n"
+        )
         with open(os.path.join(agents_dir, f"{agent_name}.agent.md"), "w") as f:
             f.write(agent_md)
 
@@ -368,6 +386,9 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
     print(f"[evaluate] Expertise: {expertise}  Repo: {GITHUB_REPOSITORY}  Dry-run: {dry_run}")
     print()
 
+    # Load registry to check which issues have already been evaluated
+    registry = Registry()
+
     print("=== Fetching discovery issues ===")
     issues = get_discovery_issues(expertise)
     print(f"  Found {len(issues)} discovery issues")
@@ -378,7 +399,34 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
 
     print("=== Scoring issues with AI ===")
     evaluated: List[Dict] = []
+    skipped = 0
     for issue in issues:
+        # Build a stable skill_ref from the issue number (always unique per repo)
+        skill_ref = f"issue#{issue['number']}"
+        # Use a SHA of the issue body to detect content changes
+        body_sha = content_sha(issue.get("body", ""))
+
+        # Determine source from labels (fallback to "github-issues")
+        source = "github-issues"
+        for lbl in issue.get("labels", []):
+            if lbl.startswith("source/"):
+                source = lbl.replace("source/", "", 1)
+                break
+
+        if not registry.needs_evaluation(source, expertise, skill_ref, body_sha):
+            cached = registry.get_entry(source, expertise, skill_ref)
+            print(
+                f"  [skip] Issue #{issue['number']} already evaluated "
+                f"(sha unchanged, rec={cached.get('recommendation','?')}): "
+                f"{issue['title'][:50]}"
+            )
+            skipped += 1
+            # Still include it in evaluated list using cached score
+            cached_score = dict(cached.get("score", {}))
+            cached_score.setdefault("recommendation", cached.get("recommendation", "include"))
+            evaluated.append({**issue, "score": cached_score})
+            continue
+
         print(f"  Scoring issue #{issue['number']}: {issue['title'][:60]}")
         score = score_discovery_issue(issue["body"], expertise)
         overall = (
@@ -391,7 +439,28 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
         print(f"    → {score['recommendation']} (overall {score['overall']}/10): {score.get('summary','')[:60]}")
         add_score_comment(issue["number"], score, dry_run)
         evaluated.append({**issue, "score": score})
+
+        # Update registry entry with score
+        lang_tags = [lbl.replace("lang/", "") for lbl in issue.get("labels", []) if lbl.startswith("lang/")]
+        platform_tags = extract_platform_tags_from_labels(
+            [lbl for lbl in issue.get("labels", []) if lbl.startswith("platform/")]
+        )
+        registry.mark_evaluated(
+            source=source,
+            plugin_ref=expertise,
+            skill_ref=skill_ref,
+            sha=body_sha,
+            expertise=expertise,
+            score=score,
+            recommendation=score.get("recommendation", "include"),
+            lang_tags=lang_tags,
+            platform_tags=platform_tags,
+            issue_number=issue["number"],
+            notes=score.get("summary", ""),
+        )
         time.sleep(1)
+
+    print(f"  Scored: {len(evaluated) - skipped}  Skipped (cached): {skipped}")
     print()
 
     # Update labels based on recommendation
@@ -416,6 +485,11 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
         print("=== Writing draft plugin ===")
         write_draft_plugin(expertise, draft, output_dir)
         print()
+
+    # Persist registry changes
+    if not dry_run:
+        registry.save()
+        print("[evaluate] Registry updated.")
 
     print("[evaluate] Done.")
     return 0

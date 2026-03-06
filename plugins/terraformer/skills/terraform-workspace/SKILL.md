@@ -1,6 +1,8 @@
 ---
 name: terraform-workspace
 description: Manage Terraform / OpenTofu workspaces to support multiple environments (dev, staging, prod) from a single configuration.
+platforms: [aws, azure, gcp, oci, digitalocean, vsphere, terraform-cloud]
+languages: [hcl, bash]
 ---
 
 When asked to manage Terraform / OpenTofu workspaces:

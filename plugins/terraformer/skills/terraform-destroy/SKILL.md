@@ -1,6 +1,8 @@
 ---
 name: terraform-destroy
 description: Destroy Terraform / OpenTofu managed infrastructure. Always generates a destroy plan and requires explicit confirmation before proceeding.
+platforms: [aws, azure, gcp, oci, digitalocean, vsphere, terraform-cloud, hcp-vault]
+languages: [hcl, bash]
 ---
 
 When asked to destroy Terraform / OpenTofu infrastructure:

@@ -1,6 +1,8 @@
 ---
 name: terraform-validate
 description: Validate Terraform / OpenTofu configuration files for syntax correctness and internal consistency. Does not require cloud credentials.
+platforms: [aws, azure, gcp, oci, digitalocean, vsphere, terraform-cloud, github-actions, azure-devops, gitlab-ci, jenkins]
+languages: [hcl, bash]
 ---
 
 When asked to validate Terraform / OpenTofu configuration:

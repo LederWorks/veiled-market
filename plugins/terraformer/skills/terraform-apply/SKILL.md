@@ -1,6 +1,8 @@
 ---
 name: terraform-apply
 description: Apply a Terraform / OpenTofu plan to create, update, or delete infrastructure resources. Always shows a plan summary and requests confirmation before applying.
+platforms: [aws, azure, gcp, oci, digitalocean, vsphere, terraform-cloud, hcp-vault, github-actions, azure-devops, gitlab-ci, jenkins]
+languages: [hcl, bash]
 ---
 
 When asked to apply Terraform / OpenTofu changes:

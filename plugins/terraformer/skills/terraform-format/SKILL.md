@@ -1,6 +1,8 @@
 ---
 name: terraform-format
 description: Format Terraform / OpenTofu HCL files to the canonical style using terraform fmt. Supports dry-run checking and recursive formatting.
+platforms: [aws, azure, gcp, oci, digitalocean, vsphere, terraform-cloud, github-actions, azure-devops, gitlab-ci, jenkins]
+languages: [hcl]
 ---
 
 When asked to format Terraform / OpenTofu files:

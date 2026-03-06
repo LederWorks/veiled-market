@@ -73,9 +73,9 @@ body:
       required: true
 
   - type: dropdown
-    id: platform
+    id: ai-platform
     attributes:
-      label: Target platform
+      label: Target AI platform
       description: Which AI CLI tool does this resource target?
       multiple: true
       options:
@@ -87,6 +87,82 @@ body:
         - Universal / Cross-platform
     validations:
       required: true
+
+  - type: checkboxes
+    id: languages
+    attributes:
+      label: Languages / technologies
+      description: "Which languages or technologies does this resource use? (adds `lang/` labels)"
+      options:
+        - label: "`lang/bash` — Shell / Bash scripting"
+        - label: "`lang/powershell` — PowerShell scripting"
+        - label: "`lang/hcl` — HashiCorp Configuration Language"
+        - label: "`lang/python` — Python"
+        - label: "`lang/go` — Go"
+        - label: "`lang/typescript` — TypeScript / JavaScript"
+        - label: "`lang/yaml` — YAML configuration"
+        - label: "`lang/json` — JSON configuration"
+        - label: "`lang/bicep` — Azure Bicep"
+        - label: "`lang/arm` — Azure ARM templates"
+        - label: "`lang/cloudformation` — AWS CloudFormation"
+        - label: "`lang/pulumi` — Pulumi programs"
+        - label: "`lang/ansible` — Ansible playbooks"
+        - label: "`lang/helm` — Helm charts"
+        - label: "`lang/dockerfile` — Dockerfiles"
+        - label: "`lang/github-workflows` — GitHub Actions YAML"
+        - label: "`lang/azuredevops-pipelines` — Azure DevOps pipeline YAML"
+        - label: "`lang/gitlab-ci` — GitLab CI YAML"
+        - label: "`lang/jenkinsfile` — Jenkinsfile"
+        - label: "`lang/markdown` — Markdown documentation"
+        - label: "`lang/documentation` — Documentation standards"
+        - label: "`lang/mcp` — MCP server configuration"
+
+  - type: checkboxes
+    id: platforms-csp
+    attributes:
+      label: "Cloud providers (platform/csp/)"
+      description: "Which cloud providers does this resource target?"
+      options:
+        - label: "`platform/csp/aws` — Amazon Web Services"
+        - label: "`platform/csp/azure` — Microsoft Azure"
+        - label: "`platform/csp/gcp` — Google Cloud Platform"
+        - label: "`platform/csp/oci` — Oracle Cloud Infrastructure"
+        - label: "`platform/csp/alicloud` — Alibaba Cloud"
+        - label: "`platform/csp/digitalocean` — DigitalOcean"
+        - label: "`platform/csp/hetzner` — Hetzner Cloud"
+        - label: "`platform/csp/vsphere` — VMware vSphere"
+
+  - type: checkboxes
+    id: platforms-ci
+    attributes:
+      label: "CI/CD platforms (platform/ci/)"
+      description: "Which CI/CD platforms does this resource target?"
+      options:
+        - label: "`platform/ci/github-actions` — GitHub Actions"
+        - label: "`platform/ci/azure-devops` — Azure DevOps Pipelines"
+        - label: "`platform/ci/gitlab-ci` — GitLab CI/CD"
+        - label: "`platform/ci/jenkins` — Jenkins"
+        - label: "`platform/ci/circleci` — CircleCI"
+        - label: "`platform/ci/teamcity` — JetBrains TeamCity"
+        - label: "`platform/ci/bitbucket` — Bitbucket Pipelines"
+
+  - type: checkboxes
+    id: platforms-saas
+    attributes:
+      label: "SaaS platforms (platform/saas/)"
+      description: "Which SaaS platforms does this resource target? Selecting a SaaS platform ensures its specific configurations are loaded into the plugin."
+      options:
+        - label: "`platform/saas/terraform-cloud` — Terraform Cloud / HCP Terraform"
+        - label: "`platform/saas/hcp-vault` — HashiCorp Vault Cloud"
+        - label: "`platform/saas/hcp-consul` — HashiCorp Consul"
+        - label: "`platform/saas/hcp-boundary` — HashiCorp Boundary"
+        - label: "`platform/saas/datadog` — Datadog"
+        - label: "`platform/saas/pagerduty` — PagerDuty"
+        - label: "`platform/saas/grafana-cloud` — Grafana Cloud"
+        - label: "`platform/saas/newrelic` — New Relic"
+        - label: "`platform/saas/snyk` — Snyk security scanning"
+        - label: "`platform/saas/sonarcloud` — SonarCloud"
+        - label: "`platform/saas/cloudflare` — Cloudflare"
 
   - type: textarea
     id: description
