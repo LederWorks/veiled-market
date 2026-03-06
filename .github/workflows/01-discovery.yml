@@ -126,13 +126,21 @@ jobs:
                   patch_num += 1
           PYEOF
 
+      - name: Generate GitHub App token for Projects API
+        if: ${{ inputs.dry_run != 'true' }}
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: LederWorks
+
       - name: Assign new issues to GitHub Project
         if: ${{ inputs.dry_run != 'true' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.PIPELINE_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PLUGIN: ${{ matrix.name }}
         run: |
-          echo "::add-mask::${{ secrets.PIPELINE_TOKEN }}"
           PROJECT_NUM=$(gh project list --owner LederWorks --format json \
             | python3 -c "import json,sys; d=json.load(sys.stdin); target='veiled-market-${{ matrix.name }}'; proj=next((p for p in d.get('projects',[]) if p['title']==target),None); print(proj['number'] if proj else '')" \
             2>/dev/null || echo "")
