@@ -1,0 +1,19 @@
+{
+  "name": "terraformer",
+  "description": "A plugin for generating and managing Terraform configurations with enhanced capabilities.",
+  "version": "0.1.0",
+  "keywords": [
+    "terraform",
+    "infrastructure-as-code",
+    "automation"
+  ],
+  "category": "DevOps",
+  "tags": [
+    "terraform",
+    "cloud",
+    "automation",
+    "infrastructure"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}
