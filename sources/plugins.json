@@ -61,7 +61,7 @@
       "keywords": ["azure-devops", "ado", "pipelines", "boards", "ci", "devops"],
       "category": "devops",
       "tags": ["azure-devops", "azure-devops-pipelines", "ci", "cd", "devops"],
-      "categories": ["DevOps"]
+      "categories": ["DevOps", "Coding"]
     },
     {
       "name": "easy-azure",
@@ -75,7 +75,7 @@
       "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-azure",
       "repository": "https://github.com/LederWorks/veiled-market",
       "license": "MIT",
-      "keywords": ["azure", "microsoft", "cloud", "bicep", "arm", "iac", "infrastructure"],
+      "keywords": ["azure", "microsoft", "cloud", "bicep", "arm", "iac", "infrastructure", "terraform"],
       "category": "infrastructure",
       "tags": ["azure", "bicep", "arm", "iac", "cloud", "devops"],
       "categories": ["DevOps"]
@@ -92,7 +92,7 @@
       "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-aws",
       "repository": "https://github.com/LederWorks/veiled-market",
       "license": "MIT",
-      "keywords": ["aws", "amazon", "cloud", "cloudformation", "iac", "infrastructure"],
+      "keywords": ["aws", "amazon", "cloud", "cloudformation", "iac", "infrastructure", "terraform"],
       "category": "infrastructure",
       "tags": ["aws", "cloudformation", "iac", "cloud", "devops"],
       "categories": ["DevOps"]
@@ -109,7 +109,7 @@
       "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-gcp",
       "repository": "https://github.com/LederWorks/veiled-market",
       "license": "MIT",
-      "keywords": ["gcp", "google-cloud", "cloud", "deployment-manager", "iac", "infrastructure"],
+      "keywords": ["gcp", "google-cloud", "cloud", "deployment-manager", "iac", "infrastructure", "terraform"],
       "category": "infrastructure",
       "tags": ["gcp", "google-cloud", "iac", "cloud", "devops"],
       "categories": ["DevOps"]
@@ -126,9 +126,9 @@
       "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-oci",
       "repository": "https://github.com/LederWorks/veiled-market",
       "license": "MIT",
-      "keywords": ["oci", "oracle", "oracle-cloud", "cloud", "iac", "infrastructure"],
+      "keywords": ["oci", "oracle", "oracle-cloud", "cloud", "iac", "infrastructure", "terraform"],
       "category": "infrastructure",
-      "tags": ["oci", "oracle-cloud", "iac", "cloud", "devops"],
+      "tags": ["oci", "oracle-cloud", "iac", "cloud", "devops", "terraform"],
       "categories": ["DevOps"]
     },
     {
@@ -143,9 +143,9 @@
       "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-kubernetes",
       "repository": "https://github.com/LederWorks/veiled-market",
       "license": "MIT",
-      "keywords": ["kubernetes", "k8s", "kubectl", "helm", "containers", "devops", "cloud"],
+      "keywords": ["kubernetes", "k8s", "kubectl", "helm", "containers", "devops", "cloud", "terraform"],
       "category": "infrastructure",
-      "tags": ["kubernetes", "k8s", "helm", "containers", "devops", "cloud"],
+      "tags": ["kubernetes", "k8s", "helm", "containers", "devops", "cloud", "terraform"],
       "categories": ["DevOps"]
     }
   ]

@@ -64,7 +64,7 @@
           "description": "AI platforms this source targets.",
           "items": {
             "type": "string",
-            "enum": ["claude", "codex", "copilot", "cursor", "gemini"]
+            "enum": ["claude", "codex", "copilot", "cursor", "gemini", "openclaw"]
           },
           "uniqueItems": true
         },

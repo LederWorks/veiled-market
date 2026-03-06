@@ -91,6 +91,17 @@
       "platform": ["claude", "copilot"],
       "description": "OpenClaw prompts and skills repository; installable via: npx openclaw install",
       "resources": ["skills"]
+    },
+    {
+      "id": "plugin-plus-skills",
+      "name": "jeremylongshore/plugin-plus-skills",
+      "type": "marketplace",
+      "repo": "jeremylongshore/claude-code-plugin-plus-skills",
+      "url": "https://pluginplus.ai/",
+      "search_url": "https://github.com/jeremylongshore/claude-codeplugin-plus-skills",
+      "platform": ["claude", "copilot", "openclaw"],
+      "description": "OpenClaw prompts and skills repository; installable via: npx openclaw install",
+      "resources": ["skills"]
     }
   ]
 }
