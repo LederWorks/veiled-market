@@ -21,6 +21,10 @@ name: "00 · Setup Labels"
 on:
   workflow_dispatch:
     inputs:
+      full_setup:
+        description: "Run base and full-setup label creation"
+        required: false
+        default: "true"
       plugin:
         description: "plugin name — creates plugin/{name} label"
         required: false
@@ -40,6 +44,11 @@ on:
 
   workflow_call:
     inputs:
+      full_setup:
+        description: "Run base and full-setup label creation (false = dynamic labels only)"
+        type: boolean
+        required: false
+        default: true
       plugin:
         description: "plugin name — creates plugin/{name} label"
         type: string
@@ -83,6 +92,7 @@ jobs:
       #   Always created on every trigger (full-setup and targeted calls).
       # -------------------------------------------------------------------
       - name: Base labels
+        if: ${{ inputs.full_setup }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -123,7 +133,7 @@ jobs:
       #   callers pass exactly the labels they need via inputs.
       # -------------------------------------------------------------------
       - name: Full-setup labels
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        if: ${{ inputs.full_setup }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}

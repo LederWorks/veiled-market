@@ -293,12 +293,26 @@ jobs:
           PYEOF
 
 # ---------------------------------------------------------------------------
-# Job 5 — Ensure all required GitHub labels exist per plugin
-#           Calls 00-setup-labels.yml as a reusable workflow (matrix over plugins).
+# Job 5 — Run base + full-setup labels ONCE before the per-plugin matrix
+# ---------------------------------------------------------------------------
+  setup-base-labels:
+    name: Setup base and source labels
+    needs: read-plugins
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/00-setup-labels.yml
+    with:
+      full_setup: true
+    secrets: inherit
+
+# ---------------------------------------------------------------------------
+# Job 6 — Ensure dynamic (per-plugin) GitHub labels exist
+#           Calls 00-setup-labels.yml with full_setup: false — dynamic only.
 # ---------------------------------------------------------------------------
   setup-labels:
     name: Labels for ${{ matrix.name }}
-    needs: read-plugins
+    needs: [read-plugins, setup-base-labels]
     strategy:
       matrix:
         include: ${{ fromJson(needs.read-plugins.outputs.plugin_matrix) }}
@@ -308,6 +322,7 @@ jobs:
       issues: write
     uses: ./.github/workflows/00-setup-labels.yml
     with:
+      full_setup: false
       plugin:        ${{ matrix.name }}
       source_ids:    ${{ matrix.source_ids }}
       lang_tags:     ${{ matrix.lang_tags }}
