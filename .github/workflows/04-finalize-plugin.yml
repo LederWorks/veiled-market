@@ -1,0 +1,240 @@
+name: "04 · Finalize Plugin"
+
+on:
+  workflow_dispatch:
+    inputs:
+      expertise:
+        description: "Expertise to finalize (e.g. terraformer)"
+        required: true
+        default: "terraformer"
+      pr_number:
+        description: "Candidate PR number to finalize (leave blank to auto-detect)"
+        required: false
+        default: ""
+  # Auto-trigger when a PR labeled status/candidate is approved
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-trigger:
+    name: Check trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      expertise: ${{ steps.check.outputs.expertise }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+    steps:
+      - id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "expertise=${{ inputs.expertise }}" >> $GITHUB_OUTPUT
+            echo "pr_number=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
+
+          elif [ "${{ github.event_name }}" = "pull_request_review" ] && \
+               [ "${{ github.event.review.state }}" = "approved" ]; then
+
+            # Check if the PR has status/candidate label
+            HAS_CANDIDATE=$(echo '${{ toJson(github.event.pull_request.labels) }}' \
+              | jq -r 'map(select(.name == "status/candidate")) | length | if . > 0 then "true" else "false" end')
+            EXPERTISE=$(echo '${{ toJson(github.event.pull_request.labels) }}' \
+              | jq -r '[.[] | select(.name | startswith("expertise/")) | .name | split("/")[1]] | first // ""')
+            if [ "$HAS_CANDIDATE" = "true" ] && [ -n "$EXPERTISE" ]; then
+              echo "should_run=true" >> $GITHUB_OUTPUT
+              echo "expertise=$EXPERTISE" >> $GITHUB_OUTPUT
+              echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            else
+              echo "should_run=false" >> $GITHUB_OUTPUT
+              echo "expertise=" >> $GITHUB_OUTPUT
+              echo "pr_number=" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "expertise=" >> $GITHUB_OUTPUT
+            echo "pr_number=" >> $GITHUB_OUTPUT
+          fi
+
+  finalize:
+    name: Finalize plugin for ${{ needs.check-trigger.outputs.expertise }}
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve candidate PR branch
+        id: resolve-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPERTISE: ${{ needs.check-trigger.outputs.expertise }}
+          INPUT_PR: ${{ needs.check-trigger.outputs.pr_number }}
+        run: |
+          if [ -n "$INPUT_PR" ]; then
+            PR_NUMBER="$INPUT_PR"
+          else
+            PR_NUMBER=$(gh pr list \
+              --label "expertise/${EXPERTISE}" \
+              --label "status/candidate" \
+              --state open \
+              --json number \
+              --jq '.[0].number' \
+              --repo "${{ github.repository }}" 2>/dev/null)
+          fi
+          if [ -z "$PR_NUMBER" ]; then
+            echo "[error] No candidate PR found for expertise '${EXPERTISE}'"
+            exit 1
+          fi
+          BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName --jq '.headRefName' \
+            --repo "${{ github.repository }}")
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Resolved candidate PR #$PR_NUMBER on branch $BRANCH"
+
+      - name: Check out the candidate branch content
+        env:
+          BRANCH: ${{ steps.resolve-pr.outputs.branch }}
+          EXPERTISE: ${{ needs.check-trigger.outputs.expertise }}
+        run: |
+          git fetch origin "$BRANCH"
+          # Copy draft files from the candidate branch
+          git checkout "origin/$BRANCH" -- "drafts/${EXPERTISE}/" 2>/dev/null || true
+
+      - name: Promote draft to plugins/
+        env:
+          EXPERTISE: ${{ needs.check-trigger.outputs.expertise }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 scripts/finalize.py --expertise "${EXPERTISE}" --step promote
+
+      - name: Update marketplace manifests
+        env:
+          EXPERTISE: ${{ needs.check-trigger.outputs.expertise }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 scripts/finalize.py --expertise "${EXPERTISE}" --step marketplace
+
+      - name: Commit and push finalization
+        id: finalize-commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPERTISE: ${{ needs.check-trigger.outputs.expertise }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH="finalize/${EXPERTISE}-$(date +%Y%m%d%H%M%S)"
+          git checkout -b "$BRANCH"
+          git add "plugins/${EXPERTISE}/" ".github/plugin/marketplace.json" ".claude-plugin/marketplace.json"
+          # Remove draft directory
+          git rm -r "drafts/${EXPERTISE}/" 2>/dev/null || true
+          PLUGIN_VERSION=$(python3 -c "import json; print(json.load(open('plugins/${EXPERTISE}/plugin.json')).get('version','0.1.0'))")
+          git commit -m "feat(plugins): finalize ${EXPERTISE} plugin v${PLUGIN_VERSION} [status/finalized]"
+          git push origin "$BRANCH"
+          echo "finalize_branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "plugin_version=$PLUGIN_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Open finalization PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPERTISE: ${{ needs.check-trigger.outputs.expertise }}
+          CANDIDATE_PR: ${{ steps.resolve-pr.outputs.pr_number }}
+        run: |
+          VERSION="${{ steps.finalize-commit.outputs.plugin_version }}"
+          BRANCH="${{ steps.finalize-commit.outputs.finalize_branch }}"
+
+          {
+            echo "## Plugin release: \`${EXPERTISE}\` v${VERSION}"
+            echo ""
+            echo "This PR finalizes the \`${EXPERTISE}\` plugin and adds it to the veiled-market marketplace."
+            echo ""
+            echo "**Closes:** #${CANDIDATE_PR}"
+            echo ""
+            echo "### Changes"
+            echo "- \`plugins/${EXPERTISE}/\` — finalized plugin directory"
+            echo "- \`.github/plugin/marketplace.json\` — updated Copilot CLI marketplace"
+            echo "- \`.claude-plugin/marketplace.json\` — updated Claude Code marketplace"
+            echo "- \`drafts/${EXPERTISE}/\` — removed (promoted to plugins/)"
+            echo ""
+            echo "### Installation (after merge)"
+            echo "**GitHub Copilot CLI:**"
+            echo '```bash'
+            echo "copilot plugin marketplace add LederWorks/veiled-market"
+            echo "copilot plugin install ${EXPERTISE}@veiled-market"
+            echo '```'
+            echo ""
+            echo "**Claude Code:**"
+            echo '```bash'
+            echo "/plugin marketplace add LederWorks/veiled-market"
+            echo "/plugin install ${EXPERTISE}@veiled-market"
+            echo '```'
+            echo ""
+            echo "### Review checklist"
+            echo "- [ ] Plugin files are correct and complete"
+            echo "- [ ] Marketplace manifests are updated"
+            echo "- [ ] Version number is appropriate"
+            echo "- [ ] No sensitive data or secrets included"
+          } > /tmp/release-body.md
+
+          gh pr create \
+            --title "🚀 Release: ${EXPERTISE} plugin v${VERSION}" \
+            --body-file /tmp/release-body.md \
+            --label "expertise/${EXPERTISE}" \
+            --label "status/finalized" \
+            --label "type/plugin" \
+            --base main \
+            --head "$BRANCH"
+
+      - name: Close candidate PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATE_PR: ${{ steps.resolve-pr.outputs.pr_number }}
+        run: |
+          gh pr comment "$CANDIDATE_PR" \
+            --body "🚀 This candidate has been finalized and promoted to \`plugins/\`. A release PR has been opened. Closing this candidate." \
+            --repo "${{ github.repository }}" 2>/dev/null || true
+          gh pr close "$CANDIDATE_PR" --repo "${{ github.repository }}" 2>/dev/null || true
+
+      - name: Update expertise issues to finalized
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPERTISE: ${{ needs.check-trigger.outputs.expertise }}
+        run: |
+          # Close all discovery issues for this expertise
+          gh issue list \
+            --label "expertise/${EXPERTISE}" \
+            --label "status/draft" \
+            --state open \
+            --json number \
+            --jq '.[].number' \
+            --repo "${{ github.repository }}" \
+          | while read N; do
+            gh issue edit "$N" \
+              --remove-label "status/draft" \
+              --add-label "status/finalized" \
+              --repo "${{ github.repository }}" 2>/dev/null || true
+          done
+
+      - name: Summary
+        run: |
+          echo "## Plugin finalized 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Expertise: \`${{ needs.check-trigger.outputs.expertise }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The plugin has been promoted to \`plugins/${{ needs.check-trigger.outputs.expertise }}/\` and the marketplace manifests have been updated." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Review and merge the release PR to publish the plugin." >> $GITHUB_STEP_SUMMARY

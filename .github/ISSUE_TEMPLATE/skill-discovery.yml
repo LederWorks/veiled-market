@@ -1,0 +1,123 @@
+name: "🔍 Skill Discovery"
+description: "Report a discovered skill, agent, hook, or plugin resource for a specific expertise"
+title: "[discovery] {expertise}: {resource-name}"
+labels:
+  - "status/discovered"
+  - "ai/discovery"
+body:
+  - type: dropdown
+    id: expertise
+    attributes:
+      label: Expertise
+      description: Which expertise does this resource belong to?
+      options:
+        - terraformer
+        - kubernetes
+        - ansible
+        - docker
+        - github-actions
+        - python
+        - nodejs
+        - go
+        - rust
+        - security
+        - other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: resource-type
+    attributes:
+      label: Resource type
+      description: What type of resource is this?
+      options:
+        - skill (SKILL.md)
+        - agent (.agent.md)
+        - hook (hooks.json)
+        - plugin (plugin.json + components)
+        - mcp-server (.mcp.json)
+        - instruction (system prompt / CLAUDE.md)
+    validations:
+      required: true
+
+  - type: input
+    id: source-url
+    attributes:
+      label: Source URL
+      description: Where was this resource found?
+      placeholder: "https://skillsmp.com/skills/terraform-plan"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source-marketplace
+    attributes:
+      label: Source marketplace
+      options:
+        - github/copilot-plugins
+        - awesome-copilot
+        - skillsmp.com
+        - agenticskills.org
+        - openskills.app
+        - openagentskills.dev
+        - agentskills.to
+        - antigravityskills.org
+        - skills.sh
+        - buildwithclaude.com
+        - claude-plugins.dev
+        - mcpmarket.com
+        - agentskills.io
+        - GitHub (other)
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Target platform
+      description: Which AI CLI tool does this resource target?
+      multiple: true
+      options:
+        - GitHub Copilot CLI
+        - Claude Code
+        - OpenAI Codex CLI
+        - Google Gemini CLI
+        - Cursor
+        - Universal / Cross-platform
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What does this resource do?
+      placeholder: "Describes how to run terraform plan and summarise the output..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: raw-content
+    attributes:
+      label: Raw content (optional)
+      description: Paste the raw skill/agent/hook content if available (SKILL.md, CLAUDE.md, etc.)
+      render: markdown
+
+  - type: checkboxes
+    id: quality
+    attributes:
+      label: Quality indicators
+      options:
+        - label: Has clear usage instructions
+        - label: Includes examples
+        - label: Mentions error handling
+        - label: Platform-specific (not just generic text)
+        - label: Has a license
+        - label: Actively maintained
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Anything else relevant about this resource?

@@ -1,0 +1,55 @@
+name: "01 · Discover Skills"
+
+on:
+  workflow_dispatch:
+    inputs:
+      expertise:
+        description: "Expertise to search for (e.g. terraformer, kubernetes, ansible)"
+        required: true
+        default: "terraformer"
+      dry_run:
+        description: "Dry run (print actions, do not create issues)"
+        type: boolean
+        required: false
+        default: false
+  schedule:
+    # Run weekly on Monday at 06:00 UTC for the 'terraformer' expertise
+    - cron: "0 6 * * 1"
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  discover:
+    name: Discover skills for ${{ inputs.expertise || 'terraformer' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run discovery script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          EXPERTISE="${{ inputs.expertise || 'terraformer' }}"
+          DRY_RUN_FLAG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+          python3 scripts/discover.py --expertise "$EXPERTISE" $DRY_RUN_FLAG
+
+      - name: Summary
+        run: |
+          echo "## Discovery complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Expertise: \`${{ inputs.expertise || 'terraformer' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Open the [Issues tab](https://github.com/${{ github.repository }}/issues?q=label%3Astatus%2Fdiscovered) to review discovered resources." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Next step: run the **02 · Compile Draft** workflow to compile a draft plugin from the discoveries." >> $GITHUB_STEP_SUMMARY

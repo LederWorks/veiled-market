@@ -1,0 +1,83 @@
+name: "00 · Setup Labels & Project"
+
+on:
+  workflow_dispatch:
+    inputs:
+      expertise:
+        description: "Expertise name to create labels for (leave blank to create all base labels)"
+        required: false
+        default: ""
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/00-setup-labels.yml"
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  setup-labels:
+    name: Create / sync repository labels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create base labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          create_label() {
+            local name="$1" color="$2" desc="$3"
+            gh label create "$name" --color "$color" --description "$desc" --repo "$REPO" 2>/dev/null \
+              || gh label edit "$name" --color "$color" --description "$desc" --repo "$REPO" 2>/dev/null \
+              || true
+          }
+
+          # Status labels
+          create_label "status/discovered"  "e4e669" "Auto-discovered from a marketplace source"
+          create_label "status/draft"       "fbca04" "Draft plugin under compilation"
+          create_label "status/candidate"   "0e8a16" "Evaluated candidate ready for review"
+          create_label "status/finalized"   "006b75" "Finalized plugin merged to main"
+          create_label "status/excluded"    "cfd3d7" "Excluded after AI evaluation"
+
+          # Type labels
+          create_label "type/skill"         "d93f0b" "Skill component"
+          create_label "type/agent"         "b60205" "Agent component"
+          create_label "type/hook"          "e11d48" "Hook component"
+          create_label "type/plugin"        "6e40c9" "Complete plugin"
+          create_label "type/mcp"           "1d76db" "MCP server configuration"
+
+          # AI workflow labels
+          create_label "ai/discovery"       "c5def5" "Created by the AI discovery workflow"
+          create_label "ai/draft"           "bfdadc" "Created by the AI draft workflow"
+          create_label "ai/evaluation"      "d4c5f9" "Created by the AI evaluation workflow"
+
+          # Source labels
+          create_label "source/github"      "24292e" "Sourced from GitHub search"
+          create_label "source/awesome-copilot" "0075ca" "Sourced from github/awesome-copilot"
+          create_label "source/skillsmp"    "5319e7" "Sourced from skillsmp.com"
+          create_label "source/agenticskills" "006b75" "Sourced from agenticskills.org"
+          create_label "source/mcpmarket"   "e4e669" "Sourced from mcpmarket.com"
+
+          echo "Base labels created/updated."
+
+      - name: Create expertise label
+        if: ${{ inputs.expertise != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          EXPERTISE: ${{ inputs.expertise }}
+        run: |
+          gh label create "expertise/${EXPERTISE}" \
+            --color "0075ca" \
+            --description "Plugin expertise: ${EXPERTISE}" \
+            --repo "$REPO" 2>/dev/null \
+            || gh label edit "expertise/${EXPERTISE}" \
+                 --color "0075ca" \
+                 --description "Plugin expertise: ${EXPERTISE}" \
+                 --repo "$REPO" 2>/dev/null \
+            || true
+          echo "Expertise label 'expertise/${EXPERTISE}' created/updated."

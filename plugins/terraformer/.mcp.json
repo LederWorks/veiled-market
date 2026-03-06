@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "terraform-ls": {
+      "command": "terraform-ls",
+      "args": ["serve"],
+      "env": {},
+      "_comment": "Terraform Language Server — install via: https://github.com/hashicorp/terraform-ls"
+    },
+    "infracost": {
+      "command": "npx",
+      "args": ["-y", "@infracost/mcp-server"],
+      "env": {
+        "INFRACOST_API_KEY": "${INFRACOST_API_KEY}"
+      },
+      "_comment": "Infracost cloud cost estimates. Requires INFRACOST_API_KEY env var. See https://www.infracost.io"
+    }
+  }
+}

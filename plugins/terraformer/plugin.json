@@ -1,0 +1,19 @@
+{
+  "name": "terraformer",
+  "description": "Comprehensive Terraform and OpenTofu workflow automation: plan, apply, validate, format, state management, imports, and workspace handling across AWS, Azure, and GCP.",
+  "version": "0.1.0",
+  "author": {
+    "name": "veiled-market contributors",
+    "url": "https://github.com/LederWorks/veiled-market"
+  },
+  "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/terraformer",
+  "repository": "https://github.com/LederWorks/veiled-market",
+  "license": "MIT",
+  "keywords": ["terraform", "opentofu", "iac", "infrastructure", "devops", "cloud"],
+  "category": "infrastructure",
+  "tags": ["terraform", "opentofu", "aws", "azure", "gcp", "iac", "devsecops"],
+  "agents": "agents/",
+  "skills": "skills/",
+  "hooks": "hooks.json",
+  "mcpServers": ".mcp.json"
+}

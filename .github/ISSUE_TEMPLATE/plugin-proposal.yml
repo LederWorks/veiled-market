@@ -1,0 +1,89 @@
+name: "🧩 Plugin Proposal"
+description: "Propose a new plugin or expertise for the veiled-market marketplace"
+title: "[proposal] {expertise}: {plugin-name}"
+labels:
+  - "type/plugin"
+  - "status/draft"
+body:
+  - type: input
+    id: plugin-name
+    attributes:
+      label: Plugin name
+      description: Kebab-case name (letters, numbers, hyphens only, max 64 chars)
+      placeholder: "my-plugin"
+    validations:
+      required: true
+
+  - type: input
+    id: expertise
+    attributes:
+      label: Expertise
+      description: The expertise or domain this plugin covers
+      placeholder: "terraformer"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What does this plugin do? (max 200 chars)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: components
+    attributes:
+      label: Proposed components
+      description: Which components would this plugin include?
+      options:
+        - label: Skills (SKILL.md files)
+        - label: Agent (.agent.md)
+        - label: Hooks (hooks.json)
+        - label: MCP server (.mcp.json)
+        - label: Commands
+
+  - type: checkboxes
+    id: platforms
+    attributes:
+      label: Target platforms
+      options:
+        - label: GitHub Copilot CLI
+          required: true
+        - label: Claude Code
+          required: true
+        - label: Other
+
+  - type: textarea
+    id: skills-list
+    attributes:
+      label: Proposed skills
+      description: List the skills this plugin should include (one per line)
+      placeholder: |
+        terraform-plan — Preview infrastructure changes
+        terraform-apply — Apply changes with confirmation
+        terraform-validate — Validate HCL syntax
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Relevant sources
+      description: Links to existing skills, plugins, or documentation that should inform this plugin
+      placeholder: |
+        - https://github.com/example/terraform-skills
+        - https://skillsmp.com/search?q=terraform
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why should this plugin be in veiled-market?
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Proposal checklist
+      options:
+        - label: I have searched for existing plugins/skills in the marketplace
+        - label: This expertise is not already covered by an existing plugin
+        - label: I am willing to review or contribute to this plugin
