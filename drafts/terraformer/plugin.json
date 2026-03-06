@@ -1,0 +1,15 @@
+{
+  "name": "terraformer",
+  "description": "Auto-generated terraformer plugin (AI unavailable)",
+  "version": "0.1.0",
+  "keywords": [
+    "terraformer"
+  ],
+  "category": "automation",
+  "tags": [
+    "terraformer"
+  ],
+  "agents": "agents/",
+  "skills": "skills/",
+  "enrichment_notes": "AI enrichment unavailable; best draft used as-is."
+}
