@@ -1,12 +1,66 @@
-name: "00 · Setup Labels & Project"
+name: "00 · Setup Labels"
+
+# This is a reusable workflow. Other workflows call it with:
+#
+#   jobs:
+#     labels:
+#       uses: ./.github/workflows/00-setup-labels.yml
+#       with:
+#         plugin:     "terraformer"
+#         source_ids:    "github-awesome-copilot,anthropics-skills"
+#         lang_tags:     "hcl,bash"
+#         platform_tags: "aws,azure"
+#       secrets: inherit
+#
+# When called this way, only the specifically requested labels are
+# created (base labels are always created regardless).
+#
+# When triggered by push (file change) or workflow_dispatch (manual),
+# ALL known labels are synced — full-setup mode.
 
 on:
   workflow_dispatch:
     inputs:
-      expertise:
-        description: "Expertise name to create labels for (leave blank to create all base labels)"
+      plugin:
+        description: "plugin name — creates plugin/{name} label"
         required: false
         default: ""
+      source_ids:
+        description: "Comma-separated source IDs — creates source/{id} labels (blank = all in full-setup mode)"
+        required: false
+        default: ""
+      lang_tags:
+        description: "Comma-separated language tags — creates lang/{tag} labels (blank = all in full-setup mode)"
+        required: false
+        default: ""
+      platform_tags:
+        description: "Comma-separated platform tags — creates platform/*/{tag} labels (blank = all in full-setup mode)"
+        required: false
+        default: ""
+
+  workflow_call:
+    inputs:
+      plugin:
+        description: "plugin name — creates plugin/{name} label"
+        type: string
+        required: false
+        default: ""
+      source_ids:
+        description: "Comma-separated source IDs — creates source/{id} labels"
+        type: string
+        required: false
+        default: ""
+      lang_tags:
+        description: "Comma-separated language tags — creates lang/{tag} labels"
+        type: string
+        required: false
+        default: ""
+      platform_tags:
+        description: "Comma-separated platform tags — creates platform/*/{tag} labels"
+        type: string
+        required: false
+        default: ""
+
   push:
     branches:
       - main
@@ -19,12 +73,16 @@ permissions:
 
 jobs:
   setup-labels:
-    name: Create / sync repository labels
+    name: Create / sync labels
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create base labels
+      # -------------------------------------------------------------------
+      # Step 1 — Base labels: status/*, type/*, ai/*
+      #   Always created on every trigger (full-setup and targeted calls).
+      # -------------------------------------------------------------------
+      - name: Base labels
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -56,106 +114,202 @@ jobs:
           create_label "ai/draft"           "bfdadc" "Created by the AI draft workflow"
           create_label "ai/evaluation"      "d4c5f9" "Created by the AI evaluation workflow"
 
-          # Source labels
-          create_label "source/github"           "24292e" "Sourced from GitHub search"
-          create_label "source/awesome-copilot"  "0075ca" "Sourced from github/awesome-copilot"
-          create_label "source/skillsmp"         "5319e7" "Sourced from skillsmp.com"
-          create_label "source/agenticskills"    "006b75" "Sourced from agenticskills.org"
-          create_label "source/mcpmarket"        "e4e669" "Sourced from mcpmarket.com"
-          create_label "source/buildwithclaude"  "0075ca" "Sourced from buildwithclaude.com"
-          create_label "source/claude-plugins"   "1d76db" "Sourced from claude-plugins.dev"
-          create_label "source/openskills"       "5319e7" "Sourced from openskills.app"
-          create_label "source/agentskills-to"   "e4e669" "Sourced from agentskills.to"
-          create_label "source/antigravity"      "0e8a16" "Sourced from antigravityskills.org"
-          create_label "source/skills-sh"        "006b75" "Sourced from skills.sh"
-
-          # --- Language labels (lang/) ---
-          # Shell / scripting
-          create_label "lang/bash"               "28a745" "Shell / Bash scripting"
-          create_label "lang/powershell"         "012456" "PowerShell scripting"
-          create_label "lang/python"             "3572A5" "Python"
-          create_label "lang/go"                 "00ADD8" "Go"
-          create_label "lang/rust"               "dea584" "Rust"
-          create_label "lang/typescript"         "2b7489" "TypeScript / JavaScript"
-
-          # Config / IaC languages
-          create_label "lang/hcl"                "7c4dff" "HashiCorp Configuration Language (Terraform/OpenTofu)"
-          create_label "lang/yaml"               "cb6f29" "YAML configuration"
-          create_label "lang/json"               "f1e05a" "JSON configuration"
-          create_label "lang/bicep"              "0078d4" "Azure Bicep"
-          create_label "lang/arm"                "0078d4" "Azure ARM templates"
-          create_label "lang/cloudformation"     "ff9900" "AWS CloudFormation"
-          create_label "lang/pulumi"             "8a3391" "Pulumi programs"
-          create_label "lang/ansible"            "e00000" "Ansible playbooks / roles"
-          create_label "lang/helm"               "0f1689" "Helm charts"
-          create_label "lang/dockerfile"         "0db7ed" "Dockerfiles / container config"
-
-          # Pipeline / workflow DSLs
-          create_label "lang/github-workflows"   "2088ff" "GitHub Actions workflow YAML"
-          create_label "lang/azuredevops-pipelines" "0078d4" "Azure DevOps pipeline YAML"
-          create_label "lang/gitlab-ci"          "e24329" "GitLab CI YAML"
-          create_label "lang/jenkinsfile"        "d33833" "Jenkinsfile / Jenkins pipeline"
-          create_label "lang/circleci"           "343434" "CircleCI config"
-
-          # Documentation / content
-          create_label "lang/markdown"           "083fa1" "Markdown documentation"
-          create_label "lang/documentation"      "0075ca" "Documentation standards / templates"
-
-          # MCP / plugin config
-          create_label "lang/mcp"                "6e40c9" "MCP server configuration (.mcp.json)"
-
-          # --- Platform labels: Cloud Service Providers (platform/csp/) ---
-          create_label "platform/csp/aws"        "ff9900" "Amazon Web Services"
-          create_label "platform/csp/azure"      "0078d4" "Microsoft Azure"
-          create_label "platform/csp/gcp"        "4285f4" "Google Cloud Platform"
-          create_label "platform/csp/oci"        "f80000" "Oracle Cloud Infrastructure"
-          create_label "platform/csp/alicloud"   "ff6a00" "Alibaba Cloud"
-          create_label "platform/csp/digitalocean" "0080ff" "DigitalOcean"
-          create_label "platform/csp/hetzner"    "d50c2d" "Hetzner Cloud"
-          create_label "platform/csp/vsphere"    "607078" "VMware vSphere / on-premises"
-
-          # --- Platform labels: CI/CD Platforms (platform/ci/) ---
-          create_label "platform/ci/github-actions"  "2088ff" "GitHub Actions"
-          create_label "platform/ci/azure-devops"    "0078d4" "Azure DevOps Pipelines"
-          create_label "platform/ci/gitlab-ci"       "e24329" "GitLab CI/CD"
-          create_label "platform/ci/jenkins"         "d33833" "Jenkins"
-          create_label "platform/ci/circleci"        "343434" "CircleCI"
-          create_label "platform/ci/teamcity"        "000000" "JetBrains TeamCity"
-          create_label "platform/ci/bitbucket"       "0052cc" "Bitbucket Pipelines"
-
-          # --- Platform labels: SaaS (platform/saas/) ---
-          create_label "platform/saas/terraform-cloud"   "7c4dff" "HashiCorp Terraform Cloud / HCP Terraform"
-          create_label "platform/saas/hcp-vault"         "ffcc00" "HashiCorp Vault Cloud (HCP Vault)"
-          create_label "platform/saas/hcp-consul"        "e03875" "HashiCorp Consul (HCP)"
-          create_label "platform/saas/hcp-boundary"      "f24c53" "HashiCorp Boundary (HCP)"
-          create_label "platform/saas/datadog"           "632ca6" "Datadog monitoring"
-          create_label "platform/saas/pagerduty"         "06ac38" "PagerDuty"
-          create_label "platform/saas/grafana-cloud"     "f46800" "Grafana Cloud"
-          create_label "platform/saas/newrelic"          "008c99" "New Relic"
-          create_label "platform/saas/splunk"            "000000" "Splunk"
-          create_label "platform/saas/snyk"              "4c4a73" "Snyk security scanning"
-          create_label "platform/saas/sonarcloud"        "f3702a" "SonarCloud code quality"
-          create_label "platform/saas/jira"              "0052cc" "Jira project management"
-          create_label "platform/saas/confluent"         "0066ff" "Confluent / Apache Kafka"
-          create_label "platform/saas/cloudflare"        "f38020" "Cloudflare"
-          create_label "platform/saas/fastly"            "ff282d" "Fastly CDN"
-
           echo "Base labels created/updated."
 
-      - name: Create expertise label
-        if: ${{ inputs.expertise != '' }}
+      # -------------------------------------------------------------------
+      # Step 2 — Full-setup: all source, lang, and platform labels.
+      #   Only runs on push (file change) or manual workflow_dispatch.
+      #   Skipped when called as a reusable workflow (workflow_call) —
+      #   callers pass exactly the labels they need via inputs.
+      # -------------------------------------------------------------------
+      - name: Full-setup labels
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          EXPERTISE: ${{ inputs.expertise }}
         run: |
-          gh label create "expertise/${EXPERTISE}" \
-            --color "0075ca" \
-            --description "Plugin expertise: ${EXPERTISE}" \
-            --repo "$REPO" 2>/dev/null \
-            || gh label edit "expertise/${EXPERTISE}" \
-                 --color "0075ca" \
-                 --description "Plugin expertise: ${EXPERTISE}" \
-                 --repo "$REPO" 2>/dev/null \
-            || true
-          echo "Expertise label 'expertise/${EXPERTISE}' created/updated."
+          create_label() {
+            local name="$1" color="$2" desc="$3"
+            gh label create "$name" --color "$color" --description "$desc" --repo "$REPO" 2>/dev/null \
+              || gh label edit "$name" --color "$color" --description "$desc" --repo "$REPO" 2>/dev/null \
+              || true
+          }
+
+          # Source labels — current sources from sources/marketplaces.json
+          create_label "source/github-copilot-plugins"  "24292e" "Sourced from github/copilot-plugins"
+          create_label "source/github-awesome-copilot"  "0075ca" "Sourced from github/awesome-copilot"
+          create_label "source/anthropics-plugins"      "cc785d" "Sourced from anthropics/claude-code"
+          create_label "source/anthropics-skills"       "cc785d" "Sourced from anthropics/skills"
+          create_label "source/antigravity-skills"      "0e8a16" "Sourced from antigravityskills.org"
+          create_label "source/build-with-claude"       "1d76db" "Sourced from buildwithclaude.com"
+          create_label "source/openclaw-skills"         "5319e7" "Sourced from clawhub.ai"
+          create_label "source/openclaw-prompts-skills" "5319e7" "Sourced from openclawskill.ai"
+
+          # Language labels — shell / scripting
+          create_label "lang/bash"                    "28a745" "Shell / Bash scripting"
+          create_label "lang/powershell"              "012456" "PowerShell scripting"
+          create_label "lang/python"                  "3572A5" "Python"
+          create_label "lang/go"                      "00ADD8" "Go"
+          create_label "lang/rust"                    "dea584" "Rust"
+          create_label "lang/typescript"              "2b7489" "TypeScript / JavaScript"
+          # Language labels — config / IaC
+          create_label "lang/hcl"                     "7c4dff" "HashiCorp Configuration Language (Terraform/OpenTofu)"
+          create_label "lang/yaml"                    "cb6f29" "YAML configuration"
+          create_label "lang/json"                    "f1e05a" "JSON configuration"
+          create_label "lang/bicep"                   "0078d4" "Azure Bicep"
+          create_label "lang/arm"                     "0078d4" "Azure ARM templates"
+          create_label "lang/cloudformation"          "ff9900" "AWS CloudFormation"
+          create_label "lang/pulumi"                  "8a3391" "Pulumi programs"
+          create_label "lang/ansible"                 "e00000" "Ansible playbooks / roles"
+          create_label "lang/helm"                    "0f1689" "Helm charts"
+          create_label "lang/dockerfile"              "0db7ed" "Dockerfiles / container config"
+          # Language labels — pipeline / workflow DSLs
+          create_label "lang/github-workflows"        "2088ff" "GitHub Actions workflow YAML"
+          create_label "lang/azuredevops-pipelines"   "0078d4" "Azure DevOps pipeline YAML"
+          create_label "lang/gitlab-ci"               "e24329" "GitLab CI YAML"
+          create_label "lang/jenkinsfile"             "d33833" "Jenkinsfile / Jenkins pipeline"
+          create_label "lang/circleci"                "343434" "CircleCI config"
+          # Language labels — documentation / content
+          create_label "lang/markdown"                "083fa1" "Markdown documentation"
+          create_label "lang/documentation"           "0075ca" "Documentation standards / templates"
+          # Language labels — MCP / plugin config
+          create_label "lang/mcp"                     "6e40c9" "MCP server configuration (.mcp.json)"
+
+          # Platform labels — Cloud Service Providers (platform/csp/)
+          create_label "platform/csp/aws"             "ff9900" "Amazon Web Services"
+          create_label "platform/csp/azure"           "0078d4" "Microsoft Azure"
+          create_label "platform/csp/gcp"             "4285f4" "Google Cloud Platform"
+          create_label "platform/csp/oci"             "f80000" "Oracle Cloud Infrastructure"
+          create_label "platform/csp/alicloud"        "ff6a00" "Alibaba Cloud"
+          create_label "platform/csp/digitalocean"    "0080ff" "DigitalOcean"
+          create_label "platform/csp/hetzner"         "d50c2d" "Hetzner Cloud"
+          create_label "platform/csp/vsphere"         "607078" "VMware vSphere / on-premises"
+          # Platform labels — CI/CD (platform/ci/)
+          create_label "platform/ci/github-actions"   "2088ff" "GitHub Actions"
+          create_label "platform/ci/azure-devops"     "0078d4" "Azure DevOps Pipelines"
+          create_label "platform/ci/gitlab-ci"        "e24329" "GitLab CI/CD"
+          create_label "platform/ci/jenkins"          "d33833" "Jenkins"
+          create_label "platform/ci/circleci"         "343434" "CircleCI"
+          create_label "platform/ci/teamcity"         "000000" "JetBrains TeamCity"
+          create_label "platform/ci/bitbucket"        "0052cc" "Bitbucket Pipelines"
+          # Platform labels — SaaS (platform/saas/)
+          create_label "platform/saas/terraform-cloud"  "7c4dff" "HashiCorp Terraform Cloud / HCP Terraform"
+          create_label "platform/saas/hcp-vault"        "ffcc00" "HashiCorp Vault Cloud (HCP Vault)"
+          create_label "platform/saas/hcp-consul"       "e03875" "HashiCorp Consul (HCP)"
+          create_label "platform/saas/hcp-boundary"     "f24c53" "HashiCorp Boundary (HCP)"
+          create_label "platform/saas/datadog"          "632ca6" "Datadog monitoring"
+          create_label "platform/saas/pagerduty"        "06ac38" "PagerDuty"
+          create_label "platform/saas/grafana-cloud"    "f46800" "Grafana Cloud"
+          create_label "platform/saas/newrelic"         "008c99" "New Relic"
+          create_label "platform/saas/splunk"           "000000" "Splunk"
+          create_label "platform/saas/snyk"             "4c4a73" "Snyk security scanning"
+          create_label "platform/saas/sonarcloud"       "f3702a" "SonarCloud code quality"
+          create_label "platform/saas/jira"             "0052cc" "Jira project management"
+          create_label "platform/saas/confluent"        "0066ff" "Confluent / Apache Kafka"
+          create_label "platform/saas/cloudflare"       "f38020" "Cloudflare"
+          create_label "platform/saas/fastly"           "ff282d" "Fastly CDN"
+
+          echo "Full-setup labels created/updated."
+
+      # -------------------------------------------------------------------
+      # Step 3 — Dynamic labels from caller inputs.
+      #   Runs when any input is non-empty.
+      #   For workflow_call: this is the only label-creation step that runs.
+      #   For workflow_dispatch: supplements the full-setup step (idempotent).
+      # -------------------------------------------------------------------
+      - name: Dynamic labels from inputs
+        if: ${{ inputs.plugin != '' || inputs.source_ids != '' || inputs.lang_tags != '' || inputs.platform_tags != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          plugin:     ${{ inputs.plugin }}
+          SOURCE_IDS:    ${{ inputs.source_ids }}
+          LANG_TAGS:     ${{ inputs.lang_tags }}
+          PLATFORM_TAGS: ${{ inputs.platform_tags }}
+        run: |
+          create_label() {
+            local name="$1" color="$2" desc="$3"
+            gh label create "$name" --color "$color" --description "$desc" --repo "$REPO" 2>/dev/null \
+              || gh label edit "$name" --color "$color" --description "$desc" --repo "$REPO" 2>/dev/null \
+              || true
+          }
+
+          # Mirrors registry.py platform_label() — selects csp/ ci/ saas/ or bare prefix
+          CSP="aws azure gcp oci alicloud digitalocean hetzner vsphere"
+          CI="github-actions azure-devops gitlab-ci jenkins circleci teamcity bitbucket"
+          SAAS="terraform-cloud hcp-vault hcp-consul hcp-boundary datadog pagerduty grafana-cloud newrelic splunk snyk sonarcloud jira confluent cloudflare fastly"
+          platform_label() {
+            local tag="$1"
+            if echo "$CSP"  | grep -qw "$tag"; then echo "platform/csp/$tag"
+            elif echo "$CI"   | grep -qw "$tag"; then echo "platform/ci/$tag"
+            elif echo "$SAAS" | grep -qw "$tag"; then echo "platform/saas/$tag"
+            else echo "platform/$tag"; fi
+          }
+
+          # Known colors for lang tags (fallback: ededed)
+          declare -A LANG_COLORS
+          LANG_COLORS=(
+            [bash]="28a745"       [powershell]="012456"          [python]="3572A5"
+            [go]="00ADD8"         [rust]="dea584"                [typescript]="2b7489"
+            [hcl]="7c4dff"        [yaml]="cb6f29"                [json]="f1e05a"
+            [bicep]="0078d4"      [arm]="0078d4"                 [cloudformation]="ff9900"
+            [pulumi]="8a3391"     [ansible]="e00000"             [helm]="0f1689"
+            [dockerfile]="0db7ed" [github-workflows]="2088ff"    [azuredevops-pipelines]="0078d4"
+            [gitlab-ci]="e24329"  [jenkinsfile]="d33833"         [circleci]="343434"
+            [markdown]="083fa1"   [documentation]="0075ca"       [mcp]="6e40c9"
+          )
+
+          # Known colors for platform tags (fallback: 0078d4)
+          declare -A PLAT_COLORS
+          PLAT_COLORS=(
+            [aws]="ff9900"        [azure]="0078d4"       [gcp]="4285f4"
+            [oci]="f80000"        [alicloud]="ff6a00"    [digitalocean]="0080ff"
+            [hetzner]="d50c2d"    [vsphere]="607078"
+            [github-actions]="2088ff"  [azure-devops]="0078d4"  [gitlab-ci]="e24329"
+            [jenkins]="d33833"    [circleci]="343434"    [teamcity]="000000"   [bitbucket]="0052cc"
+            [terraform-cloud]="7c4dff" [hcp-vault]="ffcc00"   [hcp-consul]="e03875"
+            [hcp-boundary]="f24c53"    [datadog]="632ca6"     [pagerduty]="06ac38"
+            [grafana-cloud]="f46800"   [newrelic]="008c99"    [splunk]="000000"
+            [snyk]="4c4a73"       [sonarcloud]="f3702a"  [jira]="0052cc"
+            [confluent]="0066ff"  [cloudflare]="f38020"  [fastly]="ff282d"
+          )
+
+          # plugin/{name}
+          if [ -n "$plugin" ]; then
+            create_label "plugin/${plugin}" "0075ca" "Plugin plugin: ${plugin}"
+          fi
+
+          # source/{id} for each requested source ID
+          if [ -n "$SOURCE_IDS" ]; then
+            IFS=',' read -ra IDS <<< "$SOURCE_IDS"
+            for id in "${IDS[@]}"; do
+              id="$(echo "$id" | xargs)"
+              [ -z "$id" ] && continue
+              create_label "source/${id}" "24292e" "Sourced from ${id}"
+            done
+          fi
+
+          # lang/{tag} for each requested language tag
+          if [ -n "$LANG_TAGS" ]; then
+            IFS=',' read -ra TAGS <<< "$LANG_TAGS"
+            for tag in "${TAGS[@]}"; do
+              tag="$(echo "$tag" | xargs | tr '[:upper:]' '[:lower:]')"
+              [ -z "$tag" ] && continue
+              color="${LANG_COLORS[$tag]:-"ededed"}"
+              create_label "lang/${tag}" "$color" "Language/technology: ${tag}"
+            done
+          fi
+
+          # platform/*/{tag} for each requested platform tag
+          if [ -n "$PLATFORM_TAGS" ]; then
+            IFS=',' read -ra TAGS <<< "$PLATFORM_TAGS"
+            for tag in "${TAGS[@]}"; do
+              tag="$(echo "$tag" | xargs | tr '[:upper:]' '[:lower:]')"
+              [ -z "$tag" ] && continue
+              label="$(platform_label "$tag")"
+              color="${PLAT_COLORS[$tag]:-"0078d4"}"
+              create_label "$label" "$color" "Platform: ${tag}"
+            done
+          fi
+
+          echo "Dynamic labels created/updated."

@@ -1,0 +1,134 @@
+name: "CI · Schema Validation"
+
+# Runs on every PR that touches sources/ or schemas/ to catch invalid JSON
+# before any downstream workflow fires.
+
+on:
+  pull_request:
+    paths:
+      - "sources/**"
+      - "schemas/**"
+      - ".github/plugin/marketplace.json"
+      - ".claude-plugin/marketplace.json"
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-schemas:
+    name: Validate JSON schemas
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install jsonschema
+        run: pip install jsonschema
+
+      # ── sources/ ───────────────────────────────────────────────────────────
+      - name: Validate sources/plugins.json
+        run: |
+          python3 - <<'EOF'
+          import json, jsonschema, sys
+          with open("schemas/plugins.shema.json") as f:
+              schema = json.load(f)
+          with open("sources/plugins.json") as f:
+              data = json.load(f)
+          try:
+              jsonschema.validate(data, schema)
+              print("✅ sources/plugins.json is valid")
+          except jsonschema.ValidationError as e:
+              print(f"❌ sources/plugins.json: {e.message}")
+              sys.exit(1)
+          EOF
+
+      - name: Validate sources/marketplaces.json
+        run: |
+          python3 - <<'EOF'
+          import json, jsonschema, sys
+          with open("schemas/marketplaces.schema.json") as f:
+              schema = json.load(f)
+          with open("sources/marketplaces.json") as f:
+              data = json.load(f)
+          try:
+              jsonschema.validate(data, schema)
+              print("✅ sources/marketplaces.json is valid")
+          except jsonschema.ValidationError as e:
+              print(f"❌ sources/marketplaces.json: {e.message}")
+              sys.exit(1)
+          EOF
+
+      - name: Validate sources/registry.json
+        run: |
+          python3 - <<'EOF'
+          import json, jsonschema, sys
+          with open("schemas/registry.schema.json") as f:
+              schema = json.load(f)
+          with open("sources/registry.json") as f:
+              data = json.load(f)
+          try:
+              jsonschema.validate(data, schema)
+              print("✅ sources/registry.json is valid")
+          except jsonschema.ValidationError as e:
+              print(f"❌ sources/registry.json: {e.message}")
+              sys.exit(1)
+          EOF
+
+      # ── Generated marketplace manifests ────────────────────────────────────
+      - name: Validate .github/plugin/marketplace.json
+        run: |
+          python3 - <<'EOF'
+          import json, jsonschema, sys
+          with open("schemas/marketplace.schema.json") as f:
+              schema = json.load(f)
+          with open(".github/plugin/marketplace.json") as f:
+              data = json.load(f)
+          try:
+              jsonschema.validate(data, schema)
+              print("✅ .github/plugin/marketplace.json is valid")
+          except jsonschema.ValidationError as e:
+              print(f"❌ .github/plugin/marketplace.json: {e.message}")
+              sys.exit(1)
+          EOF
+
+      - name: Validate .claude-plugin/marketplace.json
+        run: |
+          python3 - <<'EOF'
+          import json, jsonschema, sys
+          with open("schemas/marketplace.schema.json") as f:
+              schema = json.load(f)
+          with open(".claude-plugin/marketplace.json") as f:
+              data = json.load(f)
+          try:
+              jsonschema.validate(data, schema)
+              print("✅ .claude-plugin/marketplace.json is valid")
+          except jsonschema.ValidationError as e:
+              print(f"❌ .claude-plugin/marketplace.json: {e.message}")
+              sys.exit(1)
+          EOF
+
+      # ── Schema files themselves must be valid JSON ─────────────────────────
+      - name: Verify schema files are valid JSON
+        run: |
+          python3 - <<'EOF'
+          import json, sys, pathlib
+          errors = []
+          for path in pathlib.Path("schemas").glob("*.json"):
+              try:
+                  json.load(open(path))
+                  print(f"✅ {path}")
+              except json.JSONDecodeError as e:
+                  print(f"❌ {path}: {e}")
+                  errors.append(path)
+          if errors:
+              sys.exit(1)
+          EOF

@@ -1,12 +1,13 @@
 {
-  "_description": "Tracks every evaluated skill/plugin resource by source marketplace, plugin reference, and skill URL. Used to avoid redundant re-evaluation of unchanged content. SHA is the content hash (git blob SHA or SHA-256 of raw content).",
+  "$schema": "../schemas/registry.schema.json",
+  "_description": "Tracks every evaluated resource by source marketplace, plugin reference, and file path. Used to avoid redundant re-evaluation of unchanged content. SHA is the content hash (git blob SHA or SHA-256 of raw content).",
   "_hierarchy": "marketplaces[source_id][plugin_ref][skill_ref]",
   "_schema_version": "1",
   "marketplaces": {
     "github-search": {
       "K-Dense-AI/claude-scientific-skills": {
         "K-Dense-AI/claude-scientific-skills/scientific-skills/geomaster/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 15,
           "lang_tags": [
             "hcl"
@@ -21,7 +22,7 @@
       },
       "LongbowXXX/terraformer": {
         "LongbowXXX/terraformer/.github/skills/arc-create-custom-skill/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 21,
           "lang_tags": [
             "hcl"
@@ -36,7 +37,7 @@
       },
       "a5c-ai/babysitter": {
         "a5c-ai/babysitter/plugins/babysitter/skills/babysit/process/specializations/code-migration-modernization/skills/iac-generator/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 16,
           "lang_tags": [
             "hcl"
@@ -51,7 +52,7 @@
       },
       "diegosouzapw/awesome-omni-skill": {
         "diegosouzapw/awesome-omni-skill/skills/data-ai/create-custom-prompt/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 19,
           "lang_tags": [
             "hcl"
@@ -64,7 +65,7 @@
           "sha": "474cf2bb6fc51e29d0741d9d44221eb7b62befa1"
         },
         "diegosouzapw/awesome-omni-skill/skills/devops/terraformer-majiayu000/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 14,
           "lang_tags": [
             "hcl"
@@ -77,7 +78,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "diegosouzapw/awesome-omni-skill/skills/devops/terraformer/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 12,
           "lang_tags": [
             "hcl"
@@ -92,7 +93,7 @@
       },
       "harshahosur81/ag-opencode-skills": {
         "harshahosur81/ag-opencode-skills/skills/platform-engineer/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 18,
           "lang_tags": [
             "hcl"
@@ -107,7 +108,7 @@
       },
       "jessecrouch/ogamex-go": {
         "jessecrouch/ogamex-go/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 17,
           "lang_tags": [
             "hcl"
@@ -122,7 +123,7 @@
       },
       "majiayu000/claude-skill-registry": {
         "majiayu000/claude-skill-registry/skills/data/platform-migration/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 20,
           "lang_tags": [
             "hcl"
@@ -135,7 +136,7 @@
           "sha": "4231a6348c0022504bddb91696cbeb4ff9c03377"
         },
         "majiayu000/claude-skill-registry/skills/data/terraformer/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 2,
           "lang_tags": [
             "hcl"
@@ -148,7 +149,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry/skills/devops/terraformer-lobbi-docs-claude/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 6,
           "lang_tags": [
             "hcl"
@@ -161,7 +162,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry/skills/devops/terraformer/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 4,
           "lang_tags": [
             "hcl"
@@ -174,7 +175,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry/skills/other/terraformer-lobbi-docs-claude/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 5,
           "lang_tags": [
             "hcl"
@@ -187,7 +188,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry/skills/other/terraformer/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 3,
           "lang_tags": [
             "hcl"
@@ -202,7 +203,7 @@
       },
       "majiayu000/claude-skill-registry-data": {
         "majiayu000/claude-skill-registry-data/data/terraformer/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 7,
           "lang_tags": [
             "hcl"
@@ -215,7 +216,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/devops/terraformer-lobbi-docs-claude/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 13,
           "lang_tags": [
             "hcl"
@@ -228,7 +229,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/devops/terraformer/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 9,
           "lang_tags": [
             "hcl"
@@ -241,7 +242,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/other/other/terraformer/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 10,
           "lang_tags": [
             "hcl"
@@ -254,7 +255,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/other/terraformer-lobbi-docs-claude/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 11,
           "lang_tags": [
             "hcl"
@@ -267,7 +268,7 @@
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/other/terraformer/SKILL.md": {
-          "expertise": "terraformer",
+          "plugin": "terraformer",
           "issue_number": 8,
           "lang_tags": [
             "hcl"

@@ -1,0 +1,344 @@
+name: "03 · Enrich"
+
+# Triggered when Stage 2 (Evaluate) completes or when a draft PR is opened.
+# Calls enrich.py to AI-score all draft PRs for each plugin, writes scores
+# to registry.json, reconciles excluded issues, and opens a single candidate PR.
+
+on:
+  workflow_run:
+    workflows: ["02 · Evaluate"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: "plugin to evaluate drafts for (e.g. terraformer)"
+        required: true
+        default: "terraformer"
+      dry_run:
+        description: "Dry run (print actions, do not modify PRs)"
+        type: boolean
+        required: false
+        default: false
+  # Also fires when a draft PR is opened
+  pull_request:
+    types: [opened]
+
+concurrency:
+  group: enrich-${{ github.ref }}
+  cancel-in-progress: false
+
+# Deny all permissions at the workflow level; each job declares its minimum.
+permissions: {}
+
+jobs:
+  check-trigger:
+    name: Check trigger
+    runs-on: ubuntu-latest
+    # Skip if upstream workflow_run failed
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      plugin:     ${{ steps.check.outputs.plugin }}
+    steps:
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "plugin=${{ inputs.plugin }}" >> $GITHUB_OUTPUT
+
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Run for all plugins after Stage 2 completes
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "plugin=" >> $GITHUB_OUTPUT
+
+          elif [ "${{ github.event_name }}" = "pull_request" ] && \
+               [ "${{ github.event.action }}" = "opened" ]; then
+            HAS_DRAFT=$(echo '${{ toJson(github.event.pull_request.labels) }}' \
+              | jq -r 'map(select(.name == "status/draft")) | length | if . > 0 then "true" else "false" end')
+            plugin=$(echo '${{ toJson(github.event.pull_request.labels) }}' \
+              | jq -r '[.[] | select(.name | startswith("plugin/")) | .name | split("/")[1]] | first // ""')
+            if [ "$HAS_DRAFT" = "true" ] && [ -n "$plugin" ]; then
+              echo "should_run=true" >> $GITHUB_OUTPUT
+              echo "plugin=$plugin" >> $GITHUB_OUTPUT
+            else
+              echo "should_run=false" >> $GITHUB_OUTPUT
+              echo "plugin=" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "plugin=" >> $GITHUB_OUTPUT
+          fi
+
+  enrich:
+    name: Enrich drafts for ${{ needs.check-trigger.outputs.plugin || 'all plugins' }}
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve plugin list
+        id: resolve
+        env:
+          PLUGIN_INPUT: ${{ needs.check-trigger.outputs.plugin }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          plugin_input = os.environ.get("PLUGIN_INPUT", "").strip()
+          if plugin_input:
+              plugins = [plugin_input]
+          else:
+              with open("sources/plugins.json") as f:
+                  plugins = [p["name"] for p in json.load(f).get("plugins", [])]
+          print(f"Will enrich: {plugins}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"plugins={json.dumps(plugins)}\n")
+          EOF
+
+      - name: Find all draft PRs for each plugin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGINS: ${{ steps.resolve.outputs.plugins }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, subprocess
+          plugins = json.loads(os.environ["PLUGINS"])
+          repo    = os.environ.get("GITHUB_REPOSITORY", "")
+          all_drafts = {}
+          for plugin in plugins:
+              result = subprocess.run(
+                  ["gh", "pr", "list",
+                   "--label", f"plugin/{plugin}",
+                   "--label", "status/draft",
+                   "--state", "open",
+                   "--json", "number,headRefName,title",
+                   "--repo", repo],
+                  capture_output=True, text=True,
+              )
+              drafts = json.loads(result.stdout or "[]")
+              all_drafts[plugin] = drafts
+              print(f"  {plugin}: {len(drafts)} draft PR(s)")
+          with open("/tmp/all-drafts.json", "w") as f:
+              json.dump(all_drafts, f)
+          EOF
+
+      - name: Check out draft branch contents
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGINS: ${{ steps.resolve.outputs.plugins }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, subprocess
+          plugins    = json.loads(os.environ["PLUGINS"])
+          all_drafts = json.load(open("/tmp/all-drafts.json"))
+          for plugin in plugins:
+              drafts = all_drafts.get(plugin, [])
+              for i, draft in enumerate(drafts):
+                  branch = draft["headRefName"]
+                  subprocess.run(["git", "fetch", "origin", branch], capture_output=True)
+                  r = subprocess.run(
+                      ["git", "checkout", f"origin/{branch}", "--", f"drafts/{plugin}/"],
+                      capture_output=True,
+                  )
+                  if r.returncode == 0 and os.path.isdir(f"drafts/{plugin}"):
+                      dest = f"/tmp/all-drafts-dir/{plugin}/draft-{i}"
+                      os.makedirs(dest, exist_ok=True)
+                      subprocess.run(["cp", "-r", f"drafts/{plugin}/.", dest])
+                  subprocess.run(["git", "checkout", "HEAD", "--", "."], capture_output=True)
+          print("Draft collection complete")
+          EOF
+
+      - name: AI enrichment — enrich.py per plugin
+        id: enrich
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGINS: ${{ steps.resolve.outputs.plugins }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, subprocess
+          plugins = json.loads(os.environ["PLUGINS"])
+          for plugin in plugins:
+              print(f"\n=== Enriching {plugin} ===")
+              subprocess.run(
+                  ["python3", "scripts/enrich.py", "--plugin", plugin],
+                  check=False,
+              )
+          EOF
+
+      - name: Write evaluation scores to registry.json
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sources/registry.json
+          if git diff --cached --quiet; then
+            echo "No evaluation score changes to commit."
+          else
+            git commit -m "chore(registry): write evaluation scores [skip ci]"
+            git push origin HEAD
+          fi
+
+      - name: Reconcile excluded issues
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGINS: ${{ steps.resolve.outputs.plugins }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, subprocess
+          repo    = os.environ.get("GITHUB_REPOSITORY", "LederWorks/veiled-market")
+          plugins = json.loads(os.environ["PLUGINS"])
+          try:
+              with open("sources/registry.json") as f:
+                  registry = json.load(f)
+          except FileNotFoundError:
+              print("No registry.json — skipping reconciliation")
+              raise SystemExit(0)
+
+          for plugin in plugins:
+              r = subprocess.run(
+                  ["gh", "issue", "list",
+                   "--label", f"plugin/{plugin}",
+                   "--state", "open",
+                   "--json", "number,labels",
+                   "--repo", repo],
+                  capture_output=True, text=True,
+              )
+              issues = {i["number"]: i for i in json.loads(r.stdout or "[]")}
+
+              for src_data in registry.get("marketplaces", {}).get(plugin, {}).values():
+                  if not isinstance(src_data, dict):
+                      continue
+                  for entry in src_data.values():
+                      if not isinstance(entry, dict):
+                          continue
+                      if entry.get("recommendation") != "exclude":
+                          continue
+                      issue_num = entry.get("issue_number")
+                      if issue_num and issue_num in issues:
+                          print(f"  Excluding issue #{issue_num} for {plugin}")
+                          subprocess.run([
+                              "gh", "issue", "edit", str(issue_num),
+                              "--add-label",    "status/excluded",
+                              "--remove-label", "status/draft",
+                              "--repo", repo,
+                          ])
+                          subprocess.run([
+                              "gh", "issue", "close", str(issue_num),
+                              "--comment",
+                              "Automatically excluded by enrich.py evaluation. Recommendation: exclude.",
+                              "--repo", repo,
+                          ])
+          EOF
+
+      - name: Create candidate PRs and close draft PRs
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGINS: ${{ steps.resolve.outputs.plugins }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          python3 - <<'PYEOF'
+          import json, os, subprocess
+          from datetime import datetime, timezone
+
+          plugins    = json.loads(os.environ["PLUGINS"])
+          repo       = os.environ.get("GITHUB_REPOSITORY", "")
+          all_drafts = json.load(open("/tmp/all-drafts.json"))
+          ts         = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+          base       = subprocess.run(
+              ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+              capture_output=True, text=True,
+          ).stdout.strip()
+
+          for plugin in plugins:
+              drafts = all_drafts.get(plugin, [])
+              if not drafts:
+                  print(f"  No drafts for {plugin} — skipping")
+                  continue
+              if not os.path.exists(f"drafts/{plugin}/plugin.json"):
+                  print(f"  No enriched draft at drafts/{plugin}/ — skipping")
+                  continue
+
+              branch = f"candidate/{plugin}-{ts}"
+              subprocess.run(["git", "checkout", "-b", branch], check=True)
+              subprocess.run(["git", "add", f"drafts/{plugin}/"], check=True)
+              r = subprocess.run(["git", "commit", "-m",
+                  f"chore(candidate): enrich {plugin} plugin [skip ci]"])
+              if r.returncode != 0:
+                  subprocess.run(["git", "checkout", base], check=True)
+                  continue
+              subprocess.run(["git", "push", "origin", branch], check=True)
+
+              # Close all draft PRs
+              for d in drafts:
+                  subprocess.run([
+                      "gh", "pr", "comment", str(d["number"]),
+                      "--body", "🤖 Superseded by enriched candidate PR. Closing.",
+                      "--repo", repo,
+                  ], capture_output=True)
+                  subprocess.run(["gh", "pr", "close", str(d["number"]), "--repo", repo],
+                                 capture_output=True)
+
+              body = (
+                  f"## Enriched candidate plugin for `{plugin}`\n"
+                  f"\n"
+                  f"This PR was automatically generated by the "
+                  f"[03 \u00b7 Enrich](.github/workflows/03-enrich.yml) workflow.\n"
+                  f"\n"
+                  f"It consolidates **{len(drafts)} draft PR(s)** into a single enriched plugin.\n"
+                  f"\n"
+                  f"### What happened\n"
+                  f"1. All `status/draft` PRs for `{plugin}` were collected.\n"
+                  f"2. AI evaluated each draft for relevance, quality, completeness, and platform fit.\n"
+                  f"3. The best base was selected and enriched with unique features from the others.\n"
+                  f"4. Draft PRs were closed.\n"
+                  f"\n"
+                  f"### Next steps\n"
+                  f"1. Review `drafts/{plugin}/plugin.json` and the skill/agent files.\n"
+                  f"2. Merge this PR to trigger **04 \u00b7 Finalize Plugin**, which promotes the plugin to `plugins/{plugin}/`.\n"
+                  f"\n"
+                  f"### Review checklist\n"
+                  f"- [ ] Plugin name and description are accurate\n"
+                  f"- [ ] Skills cover the key use cases for `{plugin}`\n"
+                  f"- [ ] Agent system prompt is correct and safe\n"
+                  f"- [ ] No sensitive data or secrets in the plugin files\n"
+              )
+              with open("/tmp/candidate-body.md", "w") as f:
+                  f.write(body)
+              subprocess.run([
+                  "gh", "pr", "create",
+                  "--title", f"✨ Candidate: {plugin} plugin (enriched from {len(drafts)} drafts)",
+                  "--body-file", "/tmp/candidate-body.md",
+                  "--label", f"plugin/{plugin}",
+                  "--label", "status/candidate",
+                  "--label", "ai/evaluation",
+                  "--base", "main",
+                  "--head", branch,
+              ], check=False)
+              print(f"  Candidate PR opened for {plugin} on {branch}")
+              subprocess.run(["git", "checkout", base], check=True)
+          PYEOF
+
+      - name: Summary
+        run: |
+          echo "## Enrichment complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the [Pull Requests tab](https://github.com/${{ github.repository }}/pulls?q=label%3Astatus%2Fcandidate) for candidate PRs." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Merge a candidate PR to trigger **04 · Finalize Plugin**." >> $GITHUB_STEP_SUMMARY

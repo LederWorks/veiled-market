@@ -1,0 +1,211 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/LederWorks/veiled-market/main/schemas/marketplace.schema.json",
+  "title": "Plugin Marketplace Manifest",
+  "description": "Schema for marketplace.json — compatible with Claude Code and GitHub Copilot CLI plugin marketplaces.",
+  "type": "object",
+  "required": ["name", "owner", "plugins"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": {
+      "type": "string",
+      "description": "Marketplace identifier (kebab-case, no spaces). Public-facing — users see it when installing plugins, e.g. /plugin install my-tool@your-marketplace.",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "maxLength": 64
+    },
+    "owner": {
+      "type": "object",
+      "description": "Marketplace maintainer information.",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name":  { "type": "string",  "description": "Name of the maintainer or team." },
+        "email": { "type": "string",  "format": "email", "description": "Contact email for the maintainer." },
+        "url":   { "type": "string",  "format": "uri",   "description": "URL of the maintainer or organization." }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional marketplace metadata.",
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string",  "description": "Brief marketplace description." },
+        "version":     { "type": "string",  "description": "Marketplace version.", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pluginRoot":  { "type": "string",  "description": "Base directory prepended to relative plugin source paths, e.g. \"./plugins\" lets you write \"source\": \"formatter\" instead of \"source\": \"./plugins/formatter\"." }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "description": "List of available plugins.",
+      "items": { "$ref": "#/$defs/pluginEntry" }
+    }
+  },
+  "$defs": {
+    "pluginEntry": {
+      "type": "object",
+      "description": "A plugin entry in the marketplace catalog.",
+      "required": ["name", "source"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Plugin identifier (kebab-case, no spaces). Public-facing — users see it when installing, e.g. /plugin install my-plugin@marketplace.",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "source": {
+          "description": "Where to fetch the plugin from. Relative path string (./my-plugin) or a typed source object.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Relative path to a local directory within the marketplace repo."
+            },
+            { "$ref": "#/$defs/sourceGitHub" },
+            { "$ref": "#/$defs/sourceUrl" },
+            { "$ref": "#/$defs/sourceGitSubdir" },
+            { "$ref": "#/$defs/sourceNpm" },
+            { "$ref": "#/$defs/sourcePip" }
+          ]
+        },
+        "description": { "type": "string",  "description": "Brief plugin description.", "maxLength": 300 },
+        "version":     { "type": "string",  "description": "Plugin version (semver).", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "author": {
+          "type": "object",
+          "required": ["name"],
+          "additionalProperties": false,
+          "properties": {
+            "name":  { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "url":   { "type": "string", "format": "uri" }
+          }
+        },
+        "homepage":   { "type": "string", "format": "uri",   "description": "Plugin homepage or documentation URL." },
+        "repository": { "type": "string", "format": "uri",   "description": "Source code repository URL." },
+        "license":    { "type": "string", "description": "SPDX license identifier, e.g. MIT, Apache-2.0." },
+        "keywords":   { "type": "array",  "items": { "type": "string" }, "description": "Tags for plugin discovery and categorization." },
+        "category":   { "type": "string", "description": "Plugin category for organization." },
+        "tags":       { "type": "array",  "items": { "type": "string" }, "description": "Additional tags for searchability." },
+        "strict": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true (default), plugin.json is the authority for component definitions and the marketplace entry can supplement it. When false, the marketplace entry is the entire definition and the plugin must not have a plugin.json that declares components."
+        },
+        "commands": {
+          "description": "Custom paths to command/skill files or directories. String or array of strings.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "agents": {
+          "description": "Custom paths to agent definition files. String or array of strings.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "hooks": {
+          "description": "Hooks configuration or path to a hooks.json file.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object" }
+          ]
+        },
+        "mcpServers": {
+          "description": "MCP server configurations or path to an .mcp.json file.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object" }
+          ]
+        },
+        "lspServers": {
+          "description": "LSP server configurations or path to an LSP config file.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object" }
+          ]
+        },
+        "categories": {
+          "type": "array",
+          "description": "One or more categories this plugin belongs to.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "AI Agents",
+              "Coding",
+              "Data",
+              "DevOps",
+              "Marketing",
+              "Media",
+              "Other",
+              "Productivity",
+              "Security",
+              "Writing"
+            ]
+          }
+        }
+      }
+    },
+    "sourceGitHub": {
+      "type": "object",
+      "description": "Plugin hosted in a GitHub repository.",
+      "required": ["source", "repo"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string", "const": "github" },
+        "repo":   { "type": "string", "description": "GitHub repository in owner/repo format.", "pattern": "^[^/]+/[^/]+$" },
+        "ref":    { "type": "string", "description": "Git branch or tag (defaults to repository default branch)." },
+        "sha":    { "type": "string", "description": "Full 40-character git commit SHA to pin to an exact version.", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "sourceUrl": {
+      "type": "object",
+      "description": "Plugin hosted in any git repository via full URL (must end with .git).",
+      "required": ["source", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string", "const": "url" },
+        "url":    { "type": "string", "description": "Full git repository URL ending in .git." },
+        "ref":    { "type": "string" },
+        "sha":    { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "sourceGitSubdir": {
+      "type": "object",
+      "description": "Plugin inside a subdirectory of a git repository. Uses a sparse clone to minimize bandwidth.",
+      "required": ["source", "url", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string", "const": "git-subdir" },
+        "url":    { "type": "string", "description": "Git repository URL, GitHub owner/repo shorthand (owner/repo), or SSH URL (git@github.com:owner/repo.git)." },
+        "path":   { "type": "string", "description": "Subdirectory path within the repo containing the plugin, e.g. \"tools/claude-plugin\"." },
+        "ref":    { "type": "string" },
+        "sha":    { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "sourceNpm": {
+      "type": "object",
+      "description": "Plugin distributed as an npm package.",
+      "required": ["source", "package"],
+      "additionalProperties": false,
+      "properties": {
+        "source":   { "type": "string", "const": "npm" },
+        "package":  { "type": "string", "description": "Package name or scoped package, e.g. @org/plugin." },
+        "version":  { "type": "string", "description": "Version or version range, e.g. 2.1.0, ^2.0.0, ~1.5.0." },
+        "registry": { "type": "string", "format": "uri", "description": "Custom npm registry URL. Defaults to the system npm registry (typically npmjs.org)." }
+      }
+    },
+    "sourcePip": {
+      "type": "object",
+      "description": "Plugin distributed as a Python pip package.",
+      "required": ["source", "package"],
+      "additionalProperties": false,
+      "properties": {
+        "source":   { "type": "string", "const": "pip" },
+        "package":  { "type": "string", "description": "Python package name." },
+        "version":  { "type": "string", "description": "Version or version range." },
+        "registry": { "type": "string", "format": "uri", "description": "Custom PyPI registry URL." }
+      }
+    }
+  }
+}

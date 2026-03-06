@@ -2,14 +2,14 @@
 """
 enrich.py — AI-powered enrichment step for the evaluate-and-enrich workflow.
 Reads all draft plugin.json files from /tmp/all-drafts, calls GitHub Models API
-to merge the best elements, and writes the enriched plugin.json to drafts/{expertise}/.
+to merge the best elements, and writes the enriched plugin.json to drafts/{plugin}/.
 
 Usage:
   python3 scripts/enrich.py
 
 Environment variables:
   GITHUB_TOKEN   For GitHub Models API
-  EXPERTISE      The expertise name (e.g. terraformer)
+  plugin      The plugin name (e.g. terraformer)
 """
 
 import json
@@ -19,7 +19,7 @@ import urllib.error
 import urllib.request
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-EXPERTISE = os.environ.get("EXPERTISE", "")
+plugin = os.environ.get("plugin", "")
 MODELS_API = "https://models.inference.ai.azure.com"
 DRAFT_DIR = "/tmp/all-drafts"
 
@@ -56,8 +56,8 @@ def ai_complete(system: str, user: str) -> str:
 
 
 def main() -> None:
-    if not EXPERTISE:
-        print("[error] EXPERTISE environment variable is required.", file=sys.stderr)
+    if not plugin:
+        print("[error] plugin environment variable is required.", file=sys.stderr)
         sys.exit(1)
 
     # Load all draft plugin.json files
@@ -74,12 +74,12 @@ def main() -> None:
 
     if not drafts:
         print("No drafts found to enrich. Creating a placeholder.")
-        out_dir = f"drafts/{EXPERTISE}"
+        out_dir = f"drafts/{plugin}"
         os.makedirs(out_dir, exist_ok=True)
         with open(f"{out_dir}/plugin.json", "w") as f:
             json.dump(
-                {"name": EXPERTISE, "version": "0.1.0",
-                 "description": f"{EXPERTISE} plugin (no drafts found)"},
+                {"name": plugin, "version": "0.1.0",
+                 "description": f"{plugin} plugin (no drafts found)"},
                 f, indent=2,
             )
             f.write("\n")
@@ -93,7 +93,7 @@ def main() -> None:
         "Respond ONLY with a valid JSON object — no markdown fences."
     )
     user = (
-        f"Here are {len(drafts)} draft plugins for expertise '{EXPERTISE}':\n\n"
+        f"Here are {len(drafts)} draft plugins for plugin '{plugin}':\n\n"
         f"{drafts_summary}\n\n"
         "Create an enriched plugin.json that:\n"
         "1. Uses the best base plugin as the starting point\n"
@@ -126,12 +126,12 @@ def main() -> None:
         enriched = drafts[0]
         enriched["enrichment_notes"] = "AI enrichment unavailable; best draft used as-is."
 
-    out_dir = f"drafts/{EXPERTISE}"
+    out_dir = f"drafts/{plugin}"
     os.makedirs(out_dir, exist_ok=True)
     with open(f"{out_dir}/plugin.json", "w") as f:
         json.dump(enriched, f, indent=2)
         f.write("\n")
-    print(f"Enriched plugin.json written for '{EXPERTISE}'")
+    print(f"Enriched plugin.json written for '{plugin}'")
 
 
 if __name__ == "__main__":

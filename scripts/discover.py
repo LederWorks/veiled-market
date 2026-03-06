@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-discover.py — Query skill/plugin marketplaces for a given expertise and
+discover.py — Query skill/plugin marketplaces for a given plugin and
 create GitHub issues for each discovered resource.
 
 Usage:
-  python3 scripts/discover.py --expertise terraformer [--dry-run]
-  python3 scripts/discover.py --expertise terraformer --langs bash,hcl --platforms aws,azure
+  python3 scripts/discover.py --plugin terraformer [--dry-run]
+  python3 scripts/discover.py --plugin terraformer --langs bash,hcl --platforms aws,azure
 
 Environment variables:
   GITHUB_TOKEN        Required for GitHub API calls and issue creation
@@ -15,6 +15,7 @@ Environment variables:
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -30,6 +31,34 @@ from registry import Registry, content_sha, parse_tags, platform_label  # noqa: 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "LederWorks/veiled-market")
 GITHUB_API = "https://api.github.com"
+
+# ---------------------------------------------------------------------------
+# Resource type configuration
+# ---------------------------------------------------------------------------
+
+# File path patterns (re.search) that identify each resource type in a repo tree.
+RESOURCE_PATTERNS: Dict[str, List[str]] = {
+    "agents":       [r"(?:^|/)([\w.-]+)\.agent\.md$"],
+    "commands":     [r"(?:^|/)([\w.-]+)\.command\.md$"],
+    "hooks":        [r"(?:^|/)hooks\.json$"],
+    "instructions": [r"(?:^|/)([\w.-]+)\.instructions\.md$", r"(?:^|/)([\w.-]+)\.prompt\.md$"],
+    "mcp":          [r"(?:^|/)\.mcp\.json$"],
+    "plugins":      [r"(?:^|/)plugin\.json$"],
+    "skills":       [r"(?:^|/)SKILL\.md$"],
+    "workflows":    [r"(?:^|/)([\w.-]+)\.workflow\.md$"],
+}
+
+# Maps resource type to the GitHub label applied to its discovery issues.
+RESOURCE_TYPE_LABEL: Dict[str, str] = {
+    "agents":       "type/agent",
+    "commands":     "type/instruction",
+    "hooks":        "type/hook",
+    "instructions": "type/instruction",
+    "mcp":          "type/mcp",
+    "plugins":      "type/plugin",
+    "skills":       "type/skill",
+    "workflows":    "type/instruction",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -78,236 +107,112 @@ def _post(url: str, payload: Dict) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# GitHub search
+# Repo resource fetcher (GitHub Trees API — no search rate limits)
 # ---------------------------------------------------------------------------
 
-def search_github_code(expertise: str) -> List[Dict]:
-    """Search GitHub code for SKILL.md files referencing the expertise."""
-    results = []
-    queries = [
-        f"{expertise} SKILL.md in:path",
-        f"{expertise} filename:SKILL.md",
-        f"{expertise} filename:plugin.json iac OR terraform OR infrastructure",
-    ]
-    seen: set = set()
-    for q in queries:
-        encoded = urllib.parse.quote(q)
-        url = f"{GITHUB_API}/search/code?q={encoded}&per_page=20"
-        data = _get(url)
-        if not data or "items" not in data:
-            continue
-        for item in data.get("items", []):
-            key = item.get("html_url", "")
-            if key in seen:
-                continue
-            seen.add(key)
-            results.append({
-                "source": "github-search",
-                "name": item.get("name", ""),
-                "repo": item.get("repository", {}).get("full_name", ""),
-                "path": item.get("path", ""),
-                "url": item.get("html_url", ""),
-                "description": item.get("repository", {}).get("description") or "",
-                "raw_url": item.get("download_url") or item.get("html_url", ""),
-                # git blob SHA of the file — authoritative content signal
-                "sha": item.get("sha", ""),
-            })
-        time.sleep(1)  # be polite to the search API
-    return results
+def _repo_default_branch(repo: str) -> Optional[str]:
+    data = _get(f"{GITHUB_API}/repos/{repo}")
+    return data.get("default_branch", "main") if data else None
 
 
-def search_github_repos(expertise: str) -> List[Dict]:
-    """Search GitHub repositories for plugins matching the expertise."""
-    results = []
-    queries = [
-        f"{expertise} topic:terraform-plugin",
-        f"{expertise} copilot-plugin",
-        f"{expertise} claude-plugin in:name,description,topics",
-    ]
-    seen: set = set()
-    for q in queries:
-        encoded = urllib.parse.quote(q)
-        url = f"{GITHUB_API}/search/repositories?q={encoded}&sort=stars&order=desc&per_page=10"
-        data = _get(url)
-        if not data or "items" not in data:
-            continue
-        for repo in data.get("items", []):
-            key = repo.get("html_url", "")
-            if key in seen:
-                continue
-            seen.add(key)
-            results.append({
-                "source": "github-repos",
-                "name": repo.get("name", ""),
-                "repo": repo.get("full_name", ""),
-                "path": "",
-                "url": repo.get("html_url", ""),
-                "description": repo.get("description") or "",
-                "stars": repo.get("stargazers_count", 0),
-                "license": (repo.get("license") or {}).get("spdx_id", ""),
-                "topics": repo.get("topics", []),
-                # pushed_at is a reliable content-change signal (stars are not)
-                "pushed_at": repo.get("pushed_at") or repo.get("updated_at", ""),
-            })
-        time.sleep(1)
-    return results
+def fetch_repo_resources(source: Dict, keywords: str, resource_type: str) -> List[Dict]:
+    """Walk the full file tree of a repo and return files matching the resource type.
 
+    Uses the Git Trees API (``?recursive=1``) which does not count against the
+    code-search rate limit and returns every blob path in one request.
 
-def fetch_awesome_copilot(expertise: str) -> List[Dict]:
-    """Scan the awesome-copilot repo README for relevant entries."""
-    url = f"{GITHUB_API}/repos/github/awesome-copilot/readme"
-    data = _get(url)
-    if not data:
-        return []
-    import base64
-    try:
-        content = base64.b64decode(data.get("content", "")).decode(errors="replace")
-    except (ValueError, UnicodeDecodeError):
-        return []
-    results = []
-    for line in content.splitlines():
-        if expertise.lower() in line.lower():
-            results.append({
-                "source": "awesome-copilot",
-                "name": line.strip()[:120],
-                "url": "https://github.com/github/awesome-copilot",
-                "description": line.strip()[:500],
-                "raw_content": line.strip(),
-            })
-    return results[:10]
-
-
-def fetch_github_marketplace_source(source: Dict, expertise: str) -> List[Dict]:
-    """Fetch entries from a github-marketplace source by scanning its repo README."""
-    import base64
-    repo = source.get("repo", "")
-    if not repo:
-        return []
-    url = f"{GITHUB_API}/repos/{repo}/readme"
-    data = _get(url)
-    if not data:
-        return []
-    try:
-        content = base64.b64decode(data.get("content", "")).decode(errors="replace")
-    except (ValueError, UnicodeDecodeError):
-        return []
-    results = []
-    for line in content.splitlines():
-        if expertise.lower() in line.lower():
-            results.append({
-                "source": source["id"],
-                "name": line.strip()[:120],
-                "url": f"https://github.com/{repo}",
-                "description": line.strip()[:500],
-                "raw_content": line.strip(),
-            })
-    return results[:10]
-
-
-def fetch_github_source(source: Dict, expertise: str) -> List[Dict]:
-    """Fetch SKILL.md files from a github-type source via repo-scoped code search."""
-    repo = source.get("repo", "")
-    if not repo:
-        return []
-    encoded = urllib.parse.quote(f"{expertise} filename:SKILL.md repo:{repo}")
-    url = f"{GITHUB_API}/search/code?q={encoded}&per_page=20"
-    data = _get(url)
-    if not data or "items" not in data:
-        return []
-    results = []
-    for item in data.get("items", []):
-        results.append({
-            "source": source["id"],
-            "name": item.get("name", ""),
-            "repo": item.get("repository", {}).get("full_name", repo),
-            "path": item.get("path", ""),
-            "url": item.get("html_url", ""),
-            "description": item.get("repository", {}).get("description") or "",
-            "raw_url": item.get("download_url") or item.get("html_url", ""),
-            "sha": item.get("sha", ""),
-            "raw_content": item.get("path", ""),
-        })
-    time.sleep(1)
-    return results
-
-
-def fetch_web_source(source: Dict, expertise: str) -> List[Dict]:
-    """Fetch results from a web-type source using its search_url.
-
-    Tries JSON response first, then falls back to HTML anchor scanning.
+    When ``resource_type`` is ``"plugins"``, each found ``plugin.json`` is also
+    *unwrapped*: the plugin's directory is scanned for agents, skills, hooks,
+    mcp servers, commands, instructions and workflows, each returned as a
+    separate item with its own ``resource_type`` set.  The items therefore
+    appear in both the plugin registry entry **and** their respective type
+    entries — no duplicate files, no separate registry files needed.
     """
-    import re
-    search_url = source.get("search_url", "").replace("{expertise}", urllib.parse.quote(expertise))
-    if not search_url:
-        return []
-    req = urllib.request.Request(
-        search_url,
-        headers={
-            "User-Agent": "veiled-market-discover/1.0",
-            "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            content_type = resp.headers.get("Content-Type", "")
-            raw = resp.read().decode(errors="replace")
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as exc:
-        print(f"  [warn] GET {search_url} → {exc}", file=sys.stderr)
+    repo = source.get("repo", "")
+    if not repo:
         return []
 
-    # Try JSON first
-    if "application/json" in content_type:
-        try:
-            data = json.loads(raw)
-            candidates = data if isinstance(data, list) else (
-                data.get("results") or data.get("items") or
-                data.get("skills") or data.get("plugins") or []
-            )
-            results = []
-            for item in (candidates or [])[:20]:
-                if not isinstance(item, dict):
-                    continue
-                name = item.get("name") or item.get("title") or ""
-                if expertise.lower() not in name.lower() and expertise.lower() not in str(item).lower():
-                    continue
-                results.append({
-                    "source": source["id"],
-                    "name": name[:120],
-                    "url": item.get("url") or item.get("href") or item.get("link") or search_url,
-                    "description": (item.get("description") or item.get("summary") or "")[:500],
-                    "raw_content": name or str(item)[:200],
-                })
-            return results
-        except json.JSONDecodeError:
-            pass
+    repo_data = _get(f"{GITHUB_API}/repos/{repo}")
+    if not repo_data:
+        return []
+    default_branch = repo_data.get("default_branch", "main")
+    repo_desc = repo_data.get("description") or ""
 
-    # HTML: scan anchor tags for expertise-relevant links
-    results = []
-    seen: set = set()
-    parsed_base = urllib.parse.urlparse(source.get("url", search_url))
-    for m in re.finditer(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', raw, re.IGNORECASE | re.DOTALL):
-        href = m.group(1).strip()
-        text = re.sub(r"<[^>]+>", "", m.group(2)).strip()[:120]
-        if not text or len(text) < 3:
-            continue
-        if expertise.lower() not in text.lower() and expertise.lower() not in href.lower():
-            continue
-        if href in seen or href.startswith("#") or href.startswith("javascript") or href.startswith("mailto"):
-            continue
-        seen.add(href)
-        if href.startswith("/"):
-            href = f"{parsed_base.scheme}://{parsed_base.netloc}{href}"
-        elif not href.startswith("http"):
-            continue
-        results.append({
+    tree_data = _get(f"{GITHUB_API}/repos/{repo}/git/trees/{default_branch}?recursive=1")
+    if not tree_data:
+        return []
+
+    patterns = RESOURCE_PATTERNS.get(resource_type, [])
+    if not patterns:
+        return []
+
+    kw = keywords.lower()
+    tree_items = tree_data.get("tree", [])
+
+    def _make_item(path: str, sha_val: str, rtype: str) -> Dict:
+        html_url = f"https://github.com/{repo}/blob/{default_branch}/{path}"
+        raw_url = f"https://raw.githubusercontent.com/{repo}/{default_branch}/{path}"
+        return {
             "source": source["id"],
-            "name": text,
-            "url": href,
-            "description": text,
-            "raw_content": text,
-        })
-        if len(results) >= 15:
-            break
+            "name": path.split("/")[-1],
+            "repo": repo,
+            "path": path,
+            "url": html_url,
+            "raw_url": raw_url,
+            "description": repo_desc,
+            "sha": sha_val,
+            "resource_type": rtype,
+        }
+
+    results = []
+    for item in tree_items:
+        if item.get("type") != "blob":
+            continue
+        path = item.get("path", "")
+        # Must match at least one resource-type pattern
+        if not any(re.search(pat, path, re.IGNORECASE) for pat in patterns):
+            continue
+        # Keyword must appear in the path, repo name, or repo description
+        if kw and kw not in path.lower() and kw not in repo.lower() and kw not in repo_desc.lower():
+            continue
+        results.append(_make_item(path, item.get("sha", ""), resource_type))
+
+    # ------------------------------------------------------------------
+    # Plugin unwrapping: for every plugin.json discovered above, scan its
+    # containing directory for all other resource types and emit them as
+    # individual items.  This means one discovery run for "plugins" also
+    # populates agents/skills/hooks/mcp/etc. — no separate scan needed,
+    # and no separate registry files needed.
+    # ------------------------------------------------------------------
+    if resource_type == "plugins" and results:
+        plugin_dirs = {
+            os.path.dirname(r["path"])
+            for r in results
+            if r["path"].endswith("plugin.json")
+        }
+        seen_paths = {r["path"] for r in results}
+
+        for pdir in plugin_dirs:
+            prefix = (pdir + "/") if pdir else ""
+            for comp_type, comp_patterns in RESOURCE_PATTERNS.items():
+                if comp_type == "plugins":
+                    continue
+                for tree_item in tree_items:
+                    if tree_item.get("type") != "blob":
+                        continue
+                    cpath = tree_item.get("path", "")
+                    if prefix and not cpath.startswith(prefix):
+                        continue
+                    if cpath in seen_paths:
+                        continue
+                    if not any(re.search(pat, cpath, re.IGNORECASE) for pat in comp_patterns):
+                        continue
+                    # Keyword check — same rule as primary pass
+                    if kw and kw not in cpath.lower() and kw not in repo.lower() and kw not in repo_desc.lower():
+                        continue
+                    seen_paths.add(cpath)
+                    results.append(_make_item(cpath, tree_item.get("sha", ""), comp_type))
+
     return results
 
 
@@ -316,14 +221,14 @@ def fetch_web_source(source: Dict, expertise: str) -> List[Dict]:
 # ---------------------------------------------------------------------------
 
 def ensure_labels(
-    expertise: str,
+    plugin: str,
     lang_tags: Set[str],
     platform_tags: Set[str],
     dry_run: bool,
 ) -> None:
     """Create required GitHub labels if they don't exist yet."""
     base_labels = [
-        {"name": f"expertise/{expertise}", "color": "0075ca", "description": f"Plugin expertise: {expertise}"},
+        {"name": f"plugin/{plugin}", "color": "0075ca", "description": f"Plugin plugin: {plugin}"},
         {"name": "status/discovered", "color": "e4e669", "description": "Auto-discovered from a marketplace source"},
         {"name": "status/draft", "color": "fbca04", "description": "Draft plugin under compilation"},
         {"name": "status/candidate", "color": "0e8a16", "description": "Evaluated candidate ready for review"},
@@ -426,18 +331,31 @@ def _registry_key_comment(source: str, plugin_ref: str, skill_ref: str, sha: str
     return f"<!-- veiled-market-registry:{key} -->"
 
 
-def _github_code_body(item: Dict, expertise: str, lang_tags: Set[str], platform_tags: Set[str]) -> str:
+def _resource_body(
+    item: Dict,
+    plugin: str,
+    resource_type: str,
+    source: Dict,
+    lang_tags: Set[str],
+    platform_tags: Set[str],
+) -> str:
     lang_section = f"\n**Languages:** {', '.join(f'`{t}`' for t in sorted(lang_tags))}" if lang_tags else ""
     plat_section = f"\n**Platforms:** {', '.join(f'`{t}`' for t in sorted(platform_tags))}" if platform_tags else ""
-    # Use git blob SHA as the content hash (already captured from the API response)
-    sha = item.get("sha", content_sha(item.get("url", item.get("repo", ""))))
-    reg_comment = _registry_key_comment("github-search", item["repo"], f"{item['repo']}/{item['path']}", sha)
-    return f"""## Discovery: `{item['name']}` from GitHub code search
+    src_id = source.get("id", "")
+    src_name = source.get("name", src_id)
+    src_url = source.get("url", "")
+    repo = item.get("repo", "")
+    path = item.get("path", "")
+    sha = item.get("sha") or content_sha(item.get("url", ""))
+    skill_ref = f"{repo}/{path}"
+    reg_comment = _registry_key_comment(src_id, repo, skill_ref, sha)
+    return f"""## Discovery: `{path.split('/')[-1]}` ({resource_type})
 
-**Expertise:** `{expertise}`
-**Source:** GitHub code search
-**Repository:** [{item['repo']}](https://github.com/{item['repo']})
-**File:** [`{item['path']}`]({item['url']}){lang_section}{plat_section}
+**plugin:** `{plugin}`
+**Resource type:** `{resource_type}`
+**Source:** [{src_name}]({src_url})
+**Repository:** [{repo}](https://github.com/{repo})
+**File:** [`{path}`]({item.get('url', '')}){lang_section}{plat_section}
 
 ### Description
 {item.get('description') or '_No description available._'}
@@ -446,86 +364,8 @@ def _github_code_body(item: Dict, expertise: str, lang_tags: Set[str], platform_
 {item.get('raw_url', '_N/A_')}
 
 ---
-_This issue was automatically created by the [discover-skills workflow](.github/workflows/01-discover-skills.yml)._
-_Next step: Review this resource and label it `status/draft` to include it in the next compile run._
-
-{reg_comment}
-"""
-
-
-def _github_repo_body(item: Dict, expertise: str, lang_tags: Set[str], platform_tags: Set[str]) -> str:
-    topics = ", ".join(f"`{t}`" for t in item.get("topics", []))
-    lang_section = f"\n**Languages:** {', '.join(f'`{t}`' for t in sorted(lang_tags))}" if lang_tags else ""
-    plat_section = f"\n**Platforms:** {', '.join(f'`{t}`' for t in sorted(platform_tags))}" if platform_tags else ""
-    # Use pushed_at as the content signal (not stars)
-    pushed_at = item.get("pushed_at", "")
-    sha = content_sha(f"{item['repo']}:pushed_at={pushed_at}")
-    reg_comment = _registry_key_comment("github-repos", item["repo"], item["repo"], sha)
-    return f"""## Discovery: `{item['name']}` repository
-
-**Expertise:** `{expertise}`
-**Source:** GitHub repository search
-**Repository:** [{item['repo']}]({item['url']})
-**Stars:** {item.get('stars', 0)}
-**License:** {item.get('license') or '_Unknown_'}
-**Topics:** {topics or '_None_'}{lang_section}{plat_section}
-
-### Description
-{item.get('description') or '_No description available._'}
-
----
-_This issue was automatically created by the [discover-skills workflow](.github/workflows/01-discover-skills.yml)._
-_Next step: Review this resource and label it `status/draft` to include it in the next compile run._
-
-{reg_comment}
-"""
-
-
-def _awesome_body(item: Dict, expertise: str, lang_tags: Set[str], platform_tags: Set[str]) -> str:
-    lang_section = f"\n**Languages:** {', '.join(f'`{t}`' for t in sorted(lang_tags))}" if lang_tags else ""
-    plat_section = f"\n**Platforms:** {', '.join(f'`{t}`' for t in sorted(platform_tags))}" if platform_tags else ""
-    raw = item.get("raw_content", item.get("name", ""))
-    sha = content_sha(raw)
-    reg_comment = _registry_key_comment("awesome-copilot", "github/awesome-copilot", raw[:80], sha)
-    return f"""## Discovery: awesome-copilot entry
-
-**Expertise:** `{expertise}`
-**Source:** [github/awesome-copilot](https://github.com/github/awesome-copilot){lang_section}{plat_section}
-
-### Matched line
-```
-{raw}
-```
-
----
-_This issue was automatically created by the [discover-skills workflow](.github/workflows/01-discover-skills.yml)._
-
-{reg_comment}
-"""
-
-
-def _web_source_body(item: Dict, expertise: str, source: Dict, lang_tags: Set[str], platform_tags: Set[str]) -> str:
-    lang_section = f"\n**Languages:** {', '.join(f'`{t}`' for t in sorted(lang_tags))}" if lang_tags else ""
-    plat_section = f"\n**Platforms:** {', '.join(f'`{t}`' for t in sorted(platform_tags))}" if platform_tags else ""
-    src_id = source.get("id", "")
-    src_name = source.get("name", src_id)
-    src_url = source.get("url", "")
-    raw = item.get("raw_content", item.get("name", item.get("url", "")))
-    sha = content_sha(raw)
-    skill_ref = item.get("url", raw[:80]) or raw[:80]
-    reg_comment = _registry_key_comment(src_id, src_id, skill_ref, sha)
-    return f"""## Discovery: `{item.get('name', '')}` from {src_name}
-
-**Expertise:** `{expertise}`
-**Source:** [{src_name}]({src_url})
-**URL:** {item.get('url', '_N/A_')}{lang_section}{plat_section}
-
-### Description
-{item.get('description') or '_No description available._'}
-
----
-_This issue was automatically created by the [discover-skills workflow](.github/workflows/01-discover-skills.yml)._
-_Next step: Review this resource and label it `status/draft` to include it in the next compile run._
+_Auto-discovered by the [discover workflow](.github/workflows/01-discovery.yml)._
+_This issue has been automatically labeled `status/draft` and will be picked up by the next evaluation run._
 
 {reg_comment}
 """
@@ -545,209 +385,146 @@ def load_sources() -> List[Dict]:
         return []
 
 
-def discover(expertise: str, dry_run: bool, lang_tags: Set[str], platform_tags: Set[str]) -> int:
+def discover(
+    plugin: str,
+    dry_run: bool,
+    lang_tags: Set[str],
+    platform_tags: Set[str],
+    keywords: str = "",
+    source_filter: str = "",
+    resource_filter: str = "",
+    registry_output: str = "",
+) -> int:
+    keywords = keywords.strip() or plugin
     if not GITHUB_TOKEN:
         print("[error] GITHUB_TOKEN environment variable is required.", file=sys.stderr)
         return 1
 
-    print(f"[discover] Expertise: {expertise}  Repo: {GITHUB_REPOSITORY}  Dry-run: {dry_run}")
+    print(f"[discover] plugin: {plugin}  Keywords: {keywords}  Repo: {GITHUB_REPOSITORY}  Dry-run: {dry_run}")
+    if source_filter:
+        print(f"           Source filter:    {source_filter}")
+    if resource_filter:
+        print(f"           Resource filter:  {resource_filter}")
     if lang_tags:
-        print(f"           Lang filter:     {sorted(lang_tags)}")
+        print(f"           Lang filter:      {sorted(lang_tags)}")
     if platform_tags:
-        print(f"           Platform filter: {sorted(platform_tags)}")
+        print(f"           Platform filter:  {sorted(platform_tags)}")
     print()
 
-    # Ensure labels exist (including any lang/platform labels used in this run)
     print("=== Ensuring labels ===")
-    ensure_labels(expertise, lang_tags, platform_tags, dry_run)
+    ensure_labels(plugin, lang_tags, platform_tags, dry_run)
     print()
 
-    # Load registry to skip already-evaluated unchanged skills
     registry = Registry()
 
-    # Build issue labels list (base + lang/platform with correct sub-prefixes)
-    base_labels = [f"expertise/{expertise}", "status/discovered", "ai/discovery"]
+    base_labels = [f"plugin/{plugin}", "status/discovered", "status/draft", "ai/discovery"]
     lang_labels = [f"lang/{t}" for t in sorted(lang_tags)]
     platform_labels_list = [platform_label(t) for t in sorted(platform_tags)]
     filter_labels = lang_labels + platform_labels_list
 
     total_created = 0
     total_skipped = 0
+    # Pending entries written to registry_output instead of saved in-process
+    pending_entries: List[Dict] = []
 
-    # --- GitHub code search ---
-    print("=== GitHub code search ===")
-    items = search_github_code(expertise)
-    print(f"  Found {len(items)} code results")
-    for item in items:
-        skill_ref = f"{item['repo']}/{item['path']}"
-        # Use git blob SHA from GitHub API — reflects actual file content
-        sha = item.get("sha") or content_sha(item.get("url", skill_ref))
-        if not registry.needs_evaluation("github-search", item["repo"], skill_ref, sha):
-            print(f"  [skip] Already evaluated (unchanged): {skill_ref[:80]}")
-            total_skipped += 1
-            continue
-        title = f"[discovery] {expertise}: SKILL.md in {item['repo']}/{item['path']}"
-        body = _github_code_body(item, expertise, lang_tags, platform_tags)
-        # Include source label so evaluate.py can find the same registry entry
-        labels = base_labels + ["type/skill", "source/github-search"] + filter_labels
-        n = create_issue(title, body, labels, dry_run)
-        if n:
-            total_created += 1
-            registry.mark_evaluated(
-                source="github-search",
-                plugin_ref=item["repo"],
-                skill_ref=skill_ref,
-                sha=sha,
-                expertise=expertise,
-                recommendation="pending",
-                lang_tags=list(lang_tags),
-                platform_tags=list(platform_tags),
-                issue_number=n,
-                notes="Discovered; awaiting AI evaluation.",
-            )
-        time.sleep(0.5)
-    print()
-
-    # --- GitHub repo search ---
-    print("=== GitHub repository search ===")
-    repos = search_github_repos(expertise)
-    print(f"  Found {len(repos)} repositories")
-    for item in repos:
-        skill_ref = item["repo"]
-        # Use pushed_at as the content signal — reflects actual repo changes
-        pushed_at = item.get("pushed_at", "")
-        sha = content_sha(f"{skill_ref}:pushed_at={pushed_at}")
-        if not registry.needs_evaluation("github-repos", item["repo"], skill_ref, sha):
-            print(f"  [skip] Already evaluated (unchanged): {skill_ref[:80]}")
-            total_skipped += 1
-            continue
-        title = f"[discovery] {expertise}: plugin repo {item['repo']}"
-        body = _github_repo_body(item, expertise, lang_tags, platform_tags)
-        # Include source label so evaluate.py can find the same registry entry
-        labels = base_labels + ["type/plugin", "source/github-repos"] + filter_labels
-        n = create_issue(title, body, labels, dry_run)
-        if n:
-            total_created += 1
-            registry.mark_evaluated(
-                source="github-repos",
-                plugin_ref=item["repo"],
-                skill_ref=skill_ref,
-                sha=sha,
-                expertise=expertise,
-                recommendation="pending",
-                lang_tags=list(lang_tags),
-                platform_tags=list(platform_tags),
-                issue_number=n,
-                notes="Repo discovered; awaiting AI evaluation.",
-            )
-        time.sleep(0.5)
-    print()
-
-    # --- awesome-copilot scan ---
-    print("=== awesome-copilot scan ===")
-    ac_items = fetch_awesome_copilot(expertise)
-    print(f"  Found {len(ac_items)} matches")
-    for item in ac_items:
-        raw = item.get("raw_content", item.get("name", ""))
-        sha = content_sha(raw)
-        skill_ref = raw[:80]
-        if not registry.needs_evaluation("awesome-copilot", "github/awesome-copilot", skill_ref, sha):
-            print(f"  [skip] Already evaluated (unchanged): {skill_ref[:60]}")
-            total_skipped += 1
-            continue
-        title = f"[discovery] {expertise}: awesome-copilot — {item['name'][:60]}"
-        body = _awesome_body(item, expertise, lang_tags, platform_tags)
-        labels = base_labels + ["type/skill", "source/awesome-copilot"] + filter_labels
-        n = create_issue(title, body, labels, dry_run)
-        if n:
-            total_created += 1
-            registry.mark_evaluated(
-                source="awesome-copilot",
-                plugin_ref="github/awesome-copilot",
-                skill_ref=skill_ref,
-                sha=sha,
-                expertise=expertise,
-                recommendation="pending",
-                lang_tags=list(lang_tags),
-                platform_tags=list(platform_tags),
-                issue_number=n,
-                notes="Awesome-copilot entry; awaiting AI evaluation.",
-            )
-        time.sleep(0.5)
-    print()
-
-    # --- Sources from marketplaces.json (excluding already-handled ones) ---
-    # github-search and github-repos are handled by the hardcoded sections above.
-    # awesome-copilot is also handled above.
-    _HANDLED_SOURCE_IDS = {"github-search", "github-repos", "awesome-copilot"}
     for src in load_sources():
         src_id = src.get("id", "")
-        src_type = src.get("type", "web")
-        if src_id in _HANDLED_SOURCE_IDS:
+        if source_filter and src_id != source_filter:
             continue
-        print(f"=== {src.get('name', src_id)} ===")
-        if src_type == "github-marketplace":
-            src_items = fetch_github_marketplace_source(src, expertise)
-        elif src_type == "github":
-            src_items = fetch_github_source(src, expertise)
-        elif src_type == "web":
-            src_items = fetch_web_source(src, expertise)
-        else:
-            print(f"  [skip] Unhandled source type: {src_type}")
-            continue
-        print(f"  Found {len(src_items)} results")
-        for item in src_items:
-            raw = item.get("raw_content", item.get("name", item.get("url", "")))
-            sha = content_sha(raw)
-            skill_ref = item.get("url", raw[:80]) or raw[:80]
-            if not registry.needs_evaluation(src_id, src_id, skill_ref, sha):
-                print(f"  [skip] Already evaluated (unchanged): {skill_ref[:60]}")
-                total_skipped += 1
-                continue
-            title = f"[discovery] {expertise}: {src.get('name', src_id)} — {item.get('name', '')[:60]}"
-            body = _web_source_body(item, expertise, src, lang_tags, platform_tags)
-            labels = base_labels + ["type/skill", f"source/{src_id}"] + filter_labels
-            n = create_issue(title, body, labels, dry_run)
-            if n:
-                total_created += 1
-                registry.mark_evaluated(
-                    source=src_id,
-                    plugin_ref=src_id,
-                    skill_ref=skill_ref,
-                    sha=sha,
-                    expertise=expertise,
-                    recommendation="pending",
-                    lang_tags=list(lang_tags),
-                    platform_tags=list(platform_tags),
-                    issue_number=n,
-                    notes=f"Discovered from {src.get('name', src_id)}; awaiting AI evaluation.",
-                )
-            time.sleep(0.5)
-        print()
 
-    # Persist updated registry
-    if not dry_run and (total_created > 0):
+        for resource_type in src.get("resources", []):
+            if resource_filter and resource_type != resource_filter:
+                continue
+
+            print(f"=== {src.get('name', src_id)} / {resource_type} ===")
+            items = fetch_repo_resources(src, keywords, resource_type)
+            print(f"  Found {len(items)} results")
+
+            for item in items:
+                sha = item.get("sha") or content_sha(item.get("url", ""))
+                skill_ref = f"{item['repo']}/{item['path']}"
+                # Use the resource type stored on the item (plugins unwrapping may
+                # produce component items whose type differs from the outer loop var).
+                effective_type = item.get("resource_type", resource_type)
+                if not registry.needs_evaluation(src_id, item["repo"], skill_ref, sha):
+                    print(f"  [skip] Already evaluated (unchanged): {skill_ref[:70]}")
+                    total_skipped += 1
+                    continue
+
+                title = f"[discovery] {plugin}/{effective_type}: {skill_ref[:80]}"
+                body = _resource_body(item, plugin, effective_type, src, lang_tags, platform_tags)
+                type_label = RESOURCE_TYPE_LABEL.get(effective_type, "type/skill")
+                labels = base_labels + [type_label, f"source/{src_id}"] + filter_labels
+                n = create_issue(title, body, labels, dry_run)
+                if n:
+                    total_created += 1
+                    entry = dict(
+                        source=src_id,
+                        plugin_ref=item["repo"],
+                        skill_ref=skill_ref,
+                        sha=sha,
+                        plugin=plugin,
+                        resource_type=effective_type,
+                        recommendation="pending",
+                        lang_tags=list(lang_tags),
+                        platform_tags=list(platform_tags),
+                        issue_number=n,
+                        notes=f"Discovered from {src.get('name', src_id)} ({effective_type}); awaiting evaluation.",
+                    )
+                    if registry_output:
+                        pending_entries.append(entry)
+                    else:
+                        registry.mark_evaluated(**entry)
+                time.sleep(0.5)
+            print()
+
+    if registry_output:
+        patch = {
+            "source_filter": source_filter,
+            "resource_filter": resource_filter,
+            "entries": pending_entries,
+        }
+        with open(registry_output, "w") as f:
+            json.dump(patch, f, indent=2)
+        print(f"[discover] Registry patch written to {registry_output} ({len(pending_entries)} entries)")
+    elif not dry_run and total_created > 0:
         registry.save()
         print("[discover] Registry updated.")
+
+    print(f"[discover] Done. Created: {total_created}  Skipped: {total_skipped}")
     return 0
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Discover skills for a given expertise")
-    parser.add_argument("--expertise", required=True, help="Expertise name (e.g. terraformer)")
+    parser = argparse.ArgumentParser(description="Discover resources for a given plugin")
+    parser.add_argument("--plugin", required=True, help="plugin name (e.g. terraformer)")
+    parser.add_argument(
+        "--keywords",
+        default="",
+        help="Search term for marketplace queries (defaults to plugin; e.g. --keywords terraform)",
+    )
+    parser.add_argument("--source", default="", help="Limit discovery to a single source ID")
+    parser.add_argument("--resource", default="", help="Limit discovery to a single resource type (e.g. skills, agents)")
+    parser.add_argument(
+        "--registry-output",
+        default="",
+        metavar="PATH",
+        help="Write registry changes to this JSON patch file instead of saving in-place (used by matrix workflow jobs)",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Print actions without making API calls")
-    parser.add_argument(
-        "--langs",
-        default="",
-        help="Comma-separated language tags to filter/label (e.g. bash,hcl)",
-    )
-    parser.add_argument(
-        "--platforms",
-        default="",
-        help="Comma-separated platform tags to filter/label (e.g. aws,azure,github-actions)",
-    )
+    parser.add_argument("--langs", default="", help="Comma-separated language tags (e.g. bash,hcl)")
+    parser.add_argument("--platforms", default="", help="Comma-separated platform tags (e.g. aws,azure)")
     args = parser.parse_args()
-    sys.exit(discover(args.expertise, args.dry_run, parse_tags(args.langs), parse_tags(args.platforms)))
+    sys.exit(discover(
+        args.plugin,
+        args.dry_run,
+        parse_tags(args.langs),
+        parse_tags(args.platforms),
+        args.keywords,
+        args.source,
+        args.resource,
+        args.registry_output,
+    ))
 
 
 if __name__ == "__main__":

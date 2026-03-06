@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/LederWorks/veiled-market/blob/main/schemas/marketplaces.schema.json",
+  "title": "veiled-market Marketplaces",
+  "description": "Registry of skill/plugin marketplace sources queried by the discovery workflow.",
+  "type": "object",
+  "required": ["sources"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "_comment": {
+      "type": "string",
+      "description": "Human-readable comment about this file."
+    },
+    "sources": {
+      "type": "array",
+      "description": "Ordered list of marketplace/git sources to scan during discovery.",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": ["id", "name", "type", "resources"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique kebab-case identifier for this source. Used as the key in registry.json and as the 'source/{id}' GitHub label.",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable display name shown in issue bodies and logs."
+        },
+        "type": {
+          "type": "string",
+          "description": "Source type. 'marketplace' = GitHub-hosted plugin repo with a manifest (e.g. github/awesome-copilot). 'git' = plain git repo without a plugin manifest. 'api' = source exposed via a REST/GraphQL API. 'web' = source scraped from a web page.",
+          "enum": ["marketplace", "git", "api", "web"]
+        },
+        "repo": {
+          "type": "string",
+          "description": "GitHub 'owner/repo' path. Required for Trees API scanning. Must be set for any source whose resources should be discovered.",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "url": {
+          "type": "string",
+          "description": "Canonical homepage or landing-page URL for the source.",
+          "format": "uri"
+        },
+        "search_url": {
+          "type": "string",
+          "description": "URL used for browsing or searching (may differ from repo URL). Informational only; discovery uses the Trees API via 'repo'.",
+          "format": "uri"
+        },
+        "platform": {
+          "type": "array",
+          "description": "AI platforms this source targets.",
+          "items": {
+            "type": "string",
+            "enum": ["claude", "codex", "copilot", "cursor", "gemini"]
+          },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": "string",
+          "description": "Short human-readable description of what this source provides."
+        },
+        "install_cmd": {
+          "type": "string",
+          "description": "Optional. Command template for installing plugins from this source. Use '{name}' as the plugin-name placeholder."
+        },
+        "resources": {
+          "type": "array",
+          "description": "Resource types this source exposes. When 'plugins' is included, each plugin.json is also unwrapped and its component agents/skills/hooks/mcp/commands/instructions are emitted as separate discovery items.",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "agents",
+              "commands",
+              "hooks",
+              "instructions",
+              "mcp",
+              "plugins",
+              "skills",
+              "workflows"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

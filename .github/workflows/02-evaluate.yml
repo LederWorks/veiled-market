@@ -1,0 +1,200 @@
+name: "02 · Evaluate"
+
+# Triggered when Stage 1 (Discover & Draft) completes, when issues are labeled
+# status/draft, or manually. Runs evaluate.py per plugin and opens draft PRs.
+
+on:
+  workflow_run:
+    workflows: ["01 · Discover & Draft"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: "Plugin to evaluate (e.g. terraformer; leave blank for all)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run (print actions, do not create PR)"
+        type: boolean
+        required: false
+        default: false
+  # Also fires when a discovery issue is labeled status/draft
+  issues:
+    types: [labeled]
+
+concurrency:
+  group: evaluate-${{ github.ref }}
+  cancel-in-progress: false
+
+# Deny all permissions at the workflow level; each job declares its minimum.
+permissions: {}
+
+jobs:
+  # Only run when triggered correctly
+  check-trigger:
+    name: Check trigger
+    runs-on: ubuntu-latest
+    # Skip if upstream workflow_run failed
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      plugin:     ${{ steps.check.outputs.plugin }}
+    steps:
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "plugin=${{ inputs.plugin }}" >> $GITHUB_OUTPUT
+
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Run for all plugins after Stage 1 completes
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "plugin=" >> $GITHUB_OUTPUT
+
+          elif [ "${{ github.event_name }}" = "issues" ] && \
+               [ "${{ github.event.label.name }}" = "status/draft" ]; then
+            plugin=$(echo '${{ toJson(github.event.issue.labels) }}' \
+              | jq -r '[.[] | select(.name | startswith("plugin/")) | .name | split("/")[1]] | first // ""')
+            if [ -n "$plugin" ]; then
+              echo "should_run=true" >> $GITHUB_OUTPUT
+              echo "plugin=$plugin" >> $GITHUB_OUTPUT
+            else
+              echo "should_run=false" >> $GITHUB_OUTPUT
+              echo "plugin=" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "plugin=" >> $GITHUB_OUTPUT
+          fi
+
+  evaluate:
+    name: Evaluate & compile drafts
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve plugin list
+        id: resolve
+        env:
+          PLUGIN_INPUT: ${{ needs.check-trigger.outputs.plugin }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          plugin_input = os.environ.get("PLUGIN_INPUT", "").strip()
+          if plugin_input:
+              plugins = [plugin_input]
+          else:
+              with open("sources/plugins.json") as f:
+                  plugins = [p["name"] for p in json.load(f).get("plugins", [])]
+          print(f"Will evaluate: {plugins}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"plugins={json.dumps(plugins)}\n")
+          EOF
+
+      - name: Run evaluate.py per plugin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PLUGINS:     ${{ steps.resolve.outputs.plugins }}
+          DRY_RUN:     ${{ inputs.dry_run || 'false' }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, subprocess
+          plugins  = json.loads(os.environ["PLUGINS"])
+          dry_run  = os.environ.get("DRY_RUN", "false").lower() == "true"
+          dry_flag = ["--dry-run"] if dry_run else []
+          for plugin in plugins:
+              print(f"\n=== Evaluating {plugin} ===")
+              subprocess.run(
+                  ["python3", "scripts/evaluate.py",
+                   "--plugin", plugin,
+                   "--output", f"drafts/{plugin}"] + dry_flag,
+                  check=False,
+              )
+          PYEOF
+
+      - name: Commit drafts and open draft PRs
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGINS:      ${{ steps.resolve.outputs.plugins }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          python3 - <<'PYEOF'
+          import json, os, subprocess
+          from datetime import datetime, timezone
+
+          plugins     = json.loads(os.environ["PLUGINS"])
+          ts          = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+          base_branch = subprocess.run(
+              ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+              capture_output=True, text=True,
+          ).stdout.strip()
+
+          for plugin in plugins:
+              if not os.path.exists(f"drafts/{plugin}/plugin.json"):
+                  print(f"  No draft produced for {plugin} — skipping")
+                  continue
+
+              branch = f"draft/{plugin}-{ts}"
+              subprocess.run(["git", "checkout", "-b", branch], check=True)
+              subprocess.run(["git", "add", f"drafts/{plugin}/"], check=True)
+              r = subprocess.run(["git", "commit", "-m",
+                  f"chore(draft): compile {plugin} plugin draft [skip ci]"])
+              if r.returncode != 0:
+                  subprocess.run(["git", "checkout", base_branch], check=True)
+                  continue
+              subprocess.run(["git", "push", "origin", branch], check=True)
+
+              body = (
+                  f"## Auto-compiled draft plugin for `{plugin}`\n"
+                  f"\n"
+                  f"This PR was automatically generated by the "
+                  f"[02 \u00b7 Evaluate](.github/workflows/02-evaluate.yml) workflow.\n"
+                  f"\n"
+                  f"### Contents\n"
+                  f"- `drafts/{plugin}/plugin.json` \u2014 plugin manifest\n"
+                  f"- `drafts/{plugin}/skills/` \u2014 compiled skill files\n"
+                  f"- `drafts/{plugin}/agents/` \u2014 compiled agent files\n"
+                  f"\n"
+                  f"### Next steps\n"
+                  f"1. Review the generated draft for accuracy and completeness.\n"
+                  f"2. The **03 \u00b7 Enrich** workflow will auto-trigger to produce a candidate PR.\n"
+              )
+              with open("/tmp/pr-body.md", "w") as f:
+                  f.write(body)
+              subprocess.run([
+                  "gh", "pr", "create",
+                  "--title", f"🧪 Draft: {plugin} plugin (AI-compiled)",
+                  "--body-file", "/tmp/pr-body.md",
+                  "--label", f"plugin/{plugin}",
+                  "--label", "status/draft",
+                  "--label", "ai/draft",
+                  "--base", "main",
+                  "--head", branch,
+                  "--draft",
+              ], check=False)
+              print(f"  Draft PR opened for {plugin} on branch {branch}")
+              subprocess.run(["git", "checkout", base_branch], check=True)
+          PYEOF
+
+      - name: Summary
+        run: |
+          echo "## Evaluation complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the [Pull Requests tab](https://github.com/${{ github.repository }}/pulls?q=label%3Astatus%2Fdraft) for new draft PRs." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The **03 · Enrich** workflow will auto-trigger when draft PRs are opened." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,66 @@
+{
+  
+  "_comment": "Registry of skill/plugin marketplaces queried by the discovery workflow.",
+  "sources": [
+    {
+      "id": "skillsmp",
+      "name": "SkillsMP",
+      "type": "api",
+      "url": "https://skillsmp.com/docs/api",
+      "search_url": "https://skillsmp.com/docs/api",
+      "platform": ["claude", "codex", "chatgpt"],
+      "description": "350K+ skills; supports Claude, Codex, ChatGPT; SKILL.md standard",
+      "resources": ["skills"]
+    },
+    {
+      "id": "agenticskills",
+      "name": "AgenticSkills",
+      "type": "web",
+      "url": "https://agentskills.to/skills",
+      "search_url": "https://agentskills.to/skills/search?q={plugin}",
+      "platform": ["claude", "copilot", "codex"],
+      "description": "Open-source directory + CLI (search, install, manage)",
+      "resources": ["skills"]
+    },
+    {
+      "id": "openskills",
+      "name": "OpenSkills",
+      "type": "web",
+      "url": "https://openskills.app",
+      "search_url": "https://openskills.app/skills?q={plugin}",
+      "platform": ["claude", "copilot"],
+      "description": "Account-based marketplace; build & sell skills",
+      "resources": ["skills"]
+    },
+    {
+      "id": "openagentskills",
+      "name": "OpenAgentSkills",
+      "type": "web",
+      "url": "https://openagentskills.dev/skills",
+      "search_url": "https://openagentskills.dev/?search={plugin}",
+      "platform": ["claude", "copilot", "codex"],
+      "description": "Community hub; doc processing, workflow automation",
+      "resources": ["skills"]
+    },
+    {
+      "id": "skills-sh",
+      "name": "skills.sh",
+      "type": "web",
+      "url": "https://skills.sh",
+      "search_url": "https://skills.sh/docs?search={plugin}",
+      "platform": ["claude", "copilot", "codex", "gemini"],
+      "description": "CLI tool for syncing skills across all agent tools",
+      "resources": ["skills"]
+    },
+    {
+      "id": "mcpmarket-skills",
+      "name": "MCP Market (skills)",
+      "type": "web",
+      "url": "https://mcpmarket.com/tools/skills",
+      "search_url": "https://mcpmarket.com/tools/skills?search={plugin}",
+      "platform": ["claude", "codex", "chatgpt"],
+      "description": "MCP-compatible skills for Claude/Codex/ChatGPT",
+      "resources": ["mcp", "skills"]
+    }
+  ]
+}

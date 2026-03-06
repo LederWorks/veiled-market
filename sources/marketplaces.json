@@ -1,130 +1,93 @@
 {
+  "$schema": "../schemas/marketplaces.schema.json",
   "_comment": "Registry of skill/plugin marketplaces queried by the discovery workflow.",
   "sources": [
     {
       "id": "github-copilot-plugins",
       "name": "github/copilot-plugins",
-      "type": "github-marketplace",
+      "type": "marketplace",
       "repo": "github/copilot-plugins",
+      "url": "https://github.com/github/copilot-plugins",
+      "search_url": "https://github.com/github/copilot-plugins",
       "platform": ["copilot"],
       "description": "Built-in default Copilot CLI marketplace",
-      "install_cmd": "copilot plugin install {name}@copilot-plugins"
+      "install_cmd": "copilot plugin install {name}@copilot-plugins",
+      "resources": ["plugins"]
     },
     {
-      "id": "awesome-copilot",
-      "name": "awesome-copilot",
-      "type": "github-marketplace",
+      "id": "github-awesome-copilot",
+      "name": "github/awesome-copilot",
+      "type": "marketplace",
       "repo": "github/awesome-copilot",
+      "url": "https://github.com/github/awesome-copilot",
+      "search_url": "https://github.com/github/awesome-copilot",
       "platform": ["copilot"],
-      "description": "Second built-in Copilot CLI marketplace"
+      "description": "Second built-in Copilot CLI marketplace",
+      "resources": ["agents", "hooks", "instructions", "plugins", "skills", "workflows"]
     },
     {
-      "id": "skillsmp",
-      "name": "SkillsMP",
-      "type": "web",
-      "url": "https://skillsmp.com",
-      "search_url": "https://skillsmp.com/search?q={expertise}",
-      "platform": ["claude", "codex", "chatgpt"],
-      "description": "350K+ skills; supports Claude, Codex, ChatGPT; SKILL.md standard"
+      "id": "anthropics-plugins",
+      "name": "anthropics/plugins",
+      "type": "marketplace",
+      "repo": "anthropics/claude-code",
+      "url": "https://claude-plugins.dev",
+      "search_url": "https://github.com/anthropics/claude-code",
+      "platform": ["claude"],
+      "description": "Official Anthropic plugins repository for Claude Code",
+      "resources": ["plugins"]
     },
     {
-      "id": "agenticskills",
-      "name": "AgenticSkills",
-      "type": "web",
-      "url": "https://agenticskills.org",
-      "search_url": "https://agenticskills.org/search?q={expertise}",
-      "platform": ["claude", "copilot", "codex"],
-      "description": "Open-source directory + CLI (search, install, manage)"
+      "id": "anthropics-skills",
+      "name": "anthropics/skills",
+      "type": "marketplace",
+      "repo": "anthropics/skills",
+      "url": "https://github.com/anthropics/skills",
+      "search_url": "https://github.com/anthropics/skills",
+      "platform": ["claude"],
+      "description": "Official Anthropic skills repository for Claude Code",
+      "resources": ["agents", "instructions", "skills"]
     },
     {
-      "id": "openskills",
-      "name": "OpenSkills",
-      "type": "web",
-      "url": "https://openskills.app",
-      "search_url": "https://openskills.app/skills?q={expertise}",
-      "platform": ["claude", "copilot"],
-      "description": "Account-based marketplace; build & sell skills"
-    },
-    {
-      "id": "openagentskills",
-      "name": "OpenAgentSkills",
-      "type": "web",
-      "url": "https://openagentskills.dev",
-      "search_url": "https://openagentskills.dev/?search={expertise}",
-      "platform": ["claude", "copilot", "codex"],
-      "description": "Community hub; doc processing, workflow automation"
-    },
-    {
-      "id": "agentskills-to",
-      "name": "AgentSkills.to",
-      "type": "web",
-      "url": "https://agentskills.to",
-      "search_url": "https://agentskills.to/search?q={expertise}",
-      "platform": ["claude", "copilot", "codex"],
-      "description": "Skills marketplace; Claude, Copilot, Codex focus"
-    },
-    {
-      "id": "antigravityskills",
-      "name": "Antigravity Skills",
-      "type": "web",
+      "id": "antigravity-skills",
+      "name": "antigravity/skills",
+      "type": "git",
       "url": "https://antigravityskills.org",
-      "search_url": "https://antigravityskills.org/browse?q={expertise}",
-      "platform": ["claude", "gemini", "cursor", "copilot"],
-      "description": "240+ curated skills; Claude, Gemini, Cursor, Copilot"
+      "search_url": "https://github.com/sickn33/antigravity-awesome-skills",
+      "platform": ["claude", "copilot", "cursor", "gemini"],
+      "description": "240+ curated skills; Claude, Gemini, Cursor, Copilot",
+      "resources": ["skills"]
     },
     {
-      "id": "skills-sh",
-      "name": "skills.sh",
-      "type": "web",
-      "url": "https://skills.sh",
-      "search_url": "https://skills.sh/docs?search={expertise}",
-      "platform": ["claude", "copilot", "codex", "gemini"],
-      "description": "CLI tool for syncing skills across all agent tools"
-    },
-    {
-      "id": "buildwithclaude",
-      "name": "BuildWithClaude",
-      "type": "web",
+      "id": "build-with-claude",
+      "name": "davepoon/build-with-claude",
+      "type": "marketplace",
       "url": "https://buildwithclaude.com",
-      "search_url": "https://buildwithclaude.com/plugins?q={expertise}",
+      "search_url": "https://github.com/davepoon/buildwithclaude",
       "platform": ["claude"],
       "description": "Installable via: npx claude-plugins install",
-      "install_cmd": "npx claude-plugins install {name}"
+      "install_cmd": "npx claude-plugins install {name}",
+      "resources": ["agents", "commands", "hooks", "mcp", "skills", "plugins"]
     },
     {
-      "id": "claude-plugins-dev",
-      "name": "claude-plugins.dev",
-      "type": "web",
-      "url": "https://claude-plugins.dev",
-      "search_url": "https://claude-plugins.dev/search?q={expertise}",
-      "platform": ["claude"],
-      "description": "Community plugin registry for Claude Code"
+      "id": "openclaw-skills",
+      "name": "openclaw/skills",
+      "type": "git",
+      "url": "https://clawhub.ai/",
+      "search_url": "https://github.com/openclaw/skills",
+      "platform": ["claude", "copilot", "codex", "gemini", "cursor"],
+      "description": "Official OpenClaw skills repository; installable via: npx openclaw install",
+      "resources": ["skills"]
     },
     {
-      "id": "mcpmarket-skills",
-      "name": "MCP Market (skills)",
-      "type": "web",
-      "url": "https://mcpmarket.com/tools/skills",
-      "search_url": "https://mcpmarket.com/tools/skills?search={expertise}",
-      "platform": ["claude", "codex", "chatgpt"],
-      "description": "MCP-compatible skills for Claude/Codex/ChatGPT"
-    },
-    {
-      "id": "agentskills-io",
-      "name": "Agent Skills open standard",
-      "type": "github",
-      "url": "https://agentskills.io",
-      "repo": "agentskills/agentskills",
-      "platform": ["claude", "copilot", "codex"],
-      "description": "Agent Skills open standard / spec (Anthropic GitHub)"
-    },
-    {
-      "id": "github-search",
-      "name": "GitHub Code Search",
-      "type": "github-search",
-      "search_url": "https://github.com/search?q={expertise}+SKILL.md&type=code",
-      "platform": ["claude", "copilot", "codex"],
-      "description": "Search GitHub for SKILL.md files matching the expertise"
+      "id": "openclaw-prompts-skills",
+      "name": "seedprod/openclaw-prompts-skills",
+      "type": "git",
+      "repo": "seedprod/openclaw-prompts-skills",
+      "url": "https://openclawskill.ai/",
+      "search_url": "https://github.com/seedprod/openclaw-prompts-skills",
+      "platform": ["claude", "copilot"],
+      "description": "OpenClaw prompts and skills repository; installable via: npx openclaw install",
+      "resources": ["skills"]
     }
   ]
 }

@@ -26,30 +26,30 @@ Be kind and constructive. This is a community-driven project; contributions at a
 | How | When to use |
 |-----|-------------|
 | Open a **🔍 Skill Discovery** issue | You found a useful skill/plugin on an external marketplace |
-| Open a **🧩 Plugin Proposal** issue | You want a new expertise added to the marketplace |
+| Open a **🧩 Plugin Proposal** issue | You want a new plugin added to the marketplace |
 | Submit a **PR to `plugins/`** | You want to directly improve an existing plugin |
-| Run the **01-discover** workflow | You want to trigger an automated search for a new expertise |
+| Run the **01-discovery** workflow | You want to trigger an automated search for a new plugin |
 | Edit `sources/marketplaces.json` | You know of a new skill marketplace to query |
 
 ---
 
-## Proposing a new expertise
+## Proposing a new plugin
 
-1. **Check** whether an expertise already exists: browse [`plugins/`](plugins/) and open [Issues](https://github.com/LederWorks/veiled-market/issues?q=label%3Atype%2Fplugin).
+1. **Check** whether a plugin already exists: browse [`plugins/`](plugins/) and open [Issues](https://github.com/LederWorks/veiled-market/issues?q=label%3Atype%2Fplugin).
 
 2. **Open a proposal issue** using the [🧩 Plugin Proposal](.github/ISSUE_TEMPLATE/plugin-proposal.yml) template.
 
 3. **Trigger discovery** (optional, requires write access or a maintainer to run):
    ```bash
-   gh workflow run 01-discover-skills.yml \
-     -f expertise=<your-expertise>
+   gh workflow run 01-discovery.yml \
+     -f plugin=<your-plugin>
    ```
 
-4. **Review discovered issues** — the workflow creates one issue per discovered resource, labeled `expertise/<name>` + `status/discovered`.
+4. **Review discovered issues** — the workflow creates one issue per discovered resource, labeled `plugin/<name>` + `status/draft` (automatically, no manual labeling needed).
 
-5. **Label good discoveries** with `status/draft` to include them in the next compile run.
+5. The **02-evaluate** workflow will auto-trigger and open a draft PR.
 
-6. The **02-compile-draft** workflow will auto-trigger and open a draft PR.
+6. The **03-enrich** workflow will auto-trigger, enrich the draft, and open a candidate PR.
 
 ---
 
@@ -57,7 +57,7 @@ Be kind and constructive. This is a community-driven project; contributions at a
 
 1. Fork the repository and create a branch: `git checkout -b fix/terraformer-plan-skill`.
 
-2. Edit files in `plugins/<expertise>/`.
+2. Edit files in `plugins/<plugin-name>/`.
 
 3. Follow the [plugin quality standards](#plugin-quality-standards) below.
 
@@ -65,7 +65,7 @@ Be kind and constructive. This is a community-driven project; contributions at a
 
 ### Adding a new skill
 
-1. Create a new directory: `plugins/<expertise>/skills/<skill-name>/`
+1. Create a new directory: `plugins/<plugin-name>/skills/<skill-name>/`
 2. Add a `SKILL.md` file with the required frontmatter:
    ```markdown
    ---
@@ -77,11 +77,11 @@ Be kind and constructive. This is a community-driven project; contributions at a
 
    Step-by-step instructions for the AI...
    ```
-3. Update `plugins/<expertise>/plugin.json` if the `skills` path needs changing (usually not needed).
+3. Update `plugins/<plugin-name>/plugin.json` if the `skills` path needs changing (usually not needed).
 
 ### Adding a new agent
 
-1. Create `plugins/<expertise>/agents/<name>.agent.md`:
+1. Create `plugins/<plugin-name>/agents/<name>.agent.md`:
    ```markdown
    ---
    name: agent-name
@@ -130,29 +130,29 @@ export GITHUB_REPOSITORY="LederWorks/veiled-market"
 ### Run discovery
 
 ```bash
-python3 scripts/discover.py --expertise terraformer --dry-run
+python3 scripts/discover.py --plugin terraformer --dry-run
 ```
 
 ### Run evaluation
 
 ```bash
-python3 scripts/evaluate.py --expertise terraformer --dry-run --output /tmp/my-draft
+python3 scripts/evaluate.py --plugin terraformer --dry-run --output /tmp/my-draft
 ```
 
 ### Run the full workflow via GitHub CLI
 
 ```bash
 # Step 1: discover
-gh workflow run 01-discover-skills.yml -f expertise=terraformer
+gh workflow run 01-discovery.yml -f plugin=terraformer
 
-# Step 2: compile a draft (after reviewing discovered issues)
-gh workflow run 02-compile-draft.yml -f expertise=terraformer
+# Step 2: evaluate and open draft PR (auto-triggers after Step 1)
+gh workflow run 02-evaluate.yml -f plugin=terraformer
 
-# Step 3: evaluate (after multiple drafts exist)
-gh workflow run 03-evaluate-enrich.yml -f expertise=terraformer
+# Step 3: enrich the draft into a candidate PR (auto-triggers after Step 2)
+gh workflow run 03-enrich.yml -f plugin=terraformer
 
-# Step 4: finalize (after approving the candidate PR)
-gh workflow run 04-finalize-plugin.yml -f expertise=terraformer
+# Step 4: finalize (merge the candidate PR, or trigger manually)
+gh workflow run 04-finalize-plugin.yml -f plugin=terraformer
 ```
 
 ---

@@ -1,0 +1,152 @@
+{
+  "$schema": "../schemas/plugins.shema.json",
+  "marketplace": {
+    "name": "veiled-market",
+    "owner": {
+      "name": "LederWorks",
+      "url": "https://github.com/LederWorks"
+    },
+    "metadata": {
+      "description": "Veiled Market — AI-curated plugin marketplace for GitHub Copilot CLI and Claude Code. Plugins are auto-discovered from top skill registries and refined by AI workflows.",
+      "version": "0.1.0"
+    }
+  },
+  "plugins": [
+    {
+      "name": "terraformer",
+      "description": "Comprehensive Terraform and OpenTofu workflow automation: plan, apply, validate, format, state management, imports, and workspace handling across AWS, Azure, and GCP.",
+      "version": "0.1.0",
+      "source": "plugins/terraformer",
+      "author": {
+        "name": "veiled-market contributors",
+        "url": "https://github.com/LederWorks/veiled-market"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/terraformer",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["terraform", "opentofu", "iac", "infrastructure", "devops", "cloud", "hcl"],
+      "category": "infrastructure",
+      "tags": ["terraform", "opentofu", "aws", "azure", "gcp", "iac", "devsecops", "hcl"],
+      "categories": ["DevOps"]
+    },
+    {
+      "name": "easy-github",
+      "description": "GitHub workflow automation: repository management, pull requests, issues, Actions, releases, branch protection, and team collaboration shortcuts.",
+      "version": "0.1.0",
+      "source": "plugins/easy-github",
+      "author": {
+        "name": "veiled-market contributors",
+        "url": "https://github.com/LederWorks/veiled-market"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-github",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["github", "git", "pull-request", "actions", "ci", "devops"],
+      "category": "devops",
+      "tags": ["github", "github-actions", "ci", "cd", "devops"],
+      "categories": ["DevOps", "Coding"]
+    },
+    {
+      "name": "easy-azuredevops",
+      "description": "Azure DevOps automation: pipelines, boards, repos, artifacts, test plans, work items, and release management workflows.",
+      "version": "0.1.0",
+      "source": "plugins/easy-azuredevops",
+      "author": {
+        "name": "veiled-market contributors",
+        "url": "https://github.com/LederWorks/veiled-market"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-azuredevops",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["azure-devops", "ado", "pipelines", "boards", "ci", "devops"],
+      "category": "devops",
+      "tags": ["azure-devops", "azure-devops-pipelines", "ci", "cd", "devops"],
+      "categories": ["DevOps"]
+    },
+    {
+      "name": "easy-azure",
+      "description": "Microsoft Azure cloud automation: resource provisioning, Azure CLI workflows, ARM/Bicep deployments, subscriptions, networking, storage, and identity management.",
+      "version": "0.1.0",
+      "source": "plugins/easy-azure",
+      "author": {
+        "name": "veiled-market contributors",
+        "url": "https://github.com/LederWorks/veiled-market"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-azure",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["azure", "microsoft", "cloud", "bicep", "arm", "iac", "infrastructure"],
+      "category": "infrastructure",
+      "tags": ["azure", "bicep", "arm", "iac", "cloud", "devops"],
+      "categories": ["DevOps"]
+    },
+    {
+      "name": "easy-aws",
+      "description": "Amazon Web Services automation: AWS CLI workflows, CloudFormation, resource provisioning, IAM, networking, S3, EC2, Lambda, and cost management.",
+      "version": "0.1.0",
+      "source": "plugins/easy-aws",
+      "author": {
+        "name": "veiled-market contributors",
+        "url": "https://github.com/LederWorks/veiled-market"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-aws",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["aws", "amazon", "cloud", "cloudformation", "iac", "infrastructure"],
+      "category": "infrastructure",
+      "tags": ["aws", "cloudformation", "iac", "cloud", "devops"],
+      "categories": ["DevOps"]
+    },
+    {
+      "name": "easy-gcp",
+      "description": "Google Cloud Platform automation: gcloud workflows, Deployment Manager, resource provisioning, IAM, GKE, Cloud Storage, Cloud Run, and billing management.",
+      "version": "0.1.0",
+      "source": "plugins/easy-gcp",
+      "author": {
+        "name": "veiled-market contributors",
+        "url": "https://github.com/LederWorks/veiled-market"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-gcp",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["gcp", "google-cloud", "cloud", "deployment-manager", "iac", "infrastructure"],
+      "category": "infrastructure",
+      "tags": ["gcp", "google-cloud", "iac", "cloud", "devops"],
+      "categories": ["DevOps"]
+    },
+    {
+      "name": "easy-oci",
+      "description": "Oracle Cloud Infrastructure automation: OCI CLI workflows, resource provisioning, compartments, networking, compute, storage, and identity management.",
+      "version": "0.1.0",
+      "source": "plugins/easy-oci",
+      "author": {
+        "name": "veiled-market contributors",
+        "url": "https://github.com/LederWorks/veiled-market"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-oci",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["oci", "oracle", "oracle-cloud", "cloud", "iac", "infrastructure"],
+      "category": "infrastructure",
+      "tags": ["oci", "oracle-cloud", "iac", "cloud", "devops"],
+      "categories": ["DevOps"]
+    },
+    {
+      "name": "easy-kubernetes",
+      "description": "Kubernetes cluster automation: kubectl workflows, manifest management, Helm chart operations, namespace administration, pod debugging, and resource scaling.",
+      "version": "0.1.0",
+      "source": "plugins/easy-kubernetes",
+      "author": {
+        "name": "veiled-market contributors",
+        "url": "https://github.com/LederWorks/veiled-market"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/easy-kubernetes",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["kubernetes", "k8s", "kubectl", "helm", "containers", "devops", "cloud"],
+      "category": "infrastructure",
+      "tags": ["kubernetes", "k8s", "helm", "containers", "devops", "cloud"],
+      "categories": ["DevOps"]
+    }
+  ]
+}

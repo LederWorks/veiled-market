@@ -4,7 +4,7 @@ evaluate.py — Evaluate and score discovered skill/plugin issues using the
 GitHub Models API, then compile a recommended set for the draft plugin.
 
 Usage:
-  python3 scripts/evaluate.py --expertise terraformer [--dry-run] [--output drafts/terraformer]
+  python3 scripts/evaluate.py --plugin terraformer [--dry-run] [--output drafts/terraformer]
 
 Environment variables:
   GITHUB_TOKEN        Required for GitHub API and GitHub Models API
@@ -132,20 +132,20 @@ def ai_complete(system: str, user: str, model: str = DEFAULT_MODEL) -> str:
     return ""
 
 
-def score_discovery_issue(issue_body: str, expertise: str) -> Dict[str, Any]:
+def score_discovery_issue(issue_body: str, plugin: str) -> Dict[str, Any]:
     """Use AI to score a discovery issue for relevance and quality."""
     system = (
         "You are an expert evaluator for AI plugin marketplaces. "
         "You score discovered skill/plugin resources for relevance, quality, and completeness. "
         "Respond ONLY with a JSON object — no markdown fences, no explanation."
     )
-    user = f"""Score the following discovered resource for the expertise '{expertise}'.
+    user = f"""Score the following discovered resource for the plugin '{plugin}'.
 
 Issue body:
 {issue_body[:3000]}
 
 Return a JSON object with these fields:
-- relevance: integer 1-10 (how relevant to the expertise)
+- relevance: integer 1-10 (how relevant to the plugin)
 - quality: integer 1-10 (quality of the content/description)
 - completeness: integer 1-10 (how complete / actionable it is)
 - platform_fit: integer 1-10 (how well it fits Copilot CLI / Claude Code plugin format)
@@ -181,7 +181,7 @@ Return a JSON object with these fields:
 
 
 def compile_plugin_draft(
-    expertise: str,
+    plugin: str,
     evaluated_issues: List[Dict],
 ) -> Dict[str, Any]:
     """Use AI to synthesise a plugin draft from the top-scoring issues."""
@@ -199,7 +199,7 @@ def compile_plugin_draft(
         "You synthesise plugin components from multiple discovered sources into a cohesive plugin. "
         "Always follow the SKILL.md and plugin.json specifications for GitHub Copilot CLI and Claude Code plugins."
     )
-    user = f"""Based on the following discovered resources for expertise '{expertise}':
+    user = f"""Based on the following discovered resources for plugin '{plugin}':
 
 {summaries}
 
@@ -226,12 +226,12 @@ Respond ONLY with valid JSON — no markdown fences.
     raw = ai_complete(system, user)
     if not raw:
         return {
-            "name": expertise,
-            "description": f"Auto-generated {expertise} plugin (AI unavailable)",
+            "name": plugin,
+            "description": f"Auto-generated {plugin} plugin (AI unavailable)",
             "version": "0.1.0",
-            "keywords": [expertise],
+            "keywords": [plugin],
             "category": "automation",
-            "tags": [expertise],
+            "tags": [plugin],
             "skills": [],
             "agents": [],
             "enrichment_notes": "AI evaluation was unavailable; manual enrichment required.",
@@ -246,7 +246,7 @@ Respond ONLY with valid JSON — no markdown fences.
                 return json.loads(match.group())
             except json.JSONDecodeError:
                 pass
-        return {"name": expertise, "description": raw[:200], "version": "0.1.0",
+        return {"name": plugin, "description": raw[:200], "version": "0.1.0",
                 "keywords": [], "category": "", "tags": [], "skills": [], "agents": [],
                 "enrichment_notes": "Could not parse AI response"}
 
@@ -255,9 +255,9 @@ Respond ONLY with valid JSON — no markdown fences.
 # GitHub issue fetching
 # ---------------------------------------------------------------------------
 
-def get_discovery_issues(expertise: str) -> List[Dict]:
-    """Fetch all open issues labeled expertise/{expertise} + status/discovered."""
-    label = urllib.parse.quote(f"expertise/{expertise}")
+def get_discovery_issues(plugin: str) -> List[Dict]:
+    """Fetch all open issues labeled plugin/{plugin} + status/discovered."""
+    label = urllib.parse.quote(f"plugin/{plugin}")
     status = urllib.parse.quote("status/discovered")
     url = f"{GITHUB_API}/repos/{GITHUB_REPOSITORY}/issues?labels={label},{status}&state=open&per_page=50"
     issues = _get(url)
@@ -330,14 +330,14 @@ def update_issue_label(issue_number: int, old_label: str, new_label: str, dry_ru
 # Draft file generation
 # ---------------------------------------------------------------------------
 
-def write_draft_plugin(expertise: str, draft: Dict, output_dir: str) -> None:
+def write_draft_plugin(plugin: str, draft: Dict, output_dir: str) -> None:
     """Write plugin.json and skill stubs to the output directory."""
     os.makedirs(output_dir, exist_ok=True)
 
     # plugin.json
     manifest = {
-        "name": draft.get("name", expertise),
-        "description": draft.get("description", f"{expertise} plugin"),
+        "name": draft.get("name", plugin),
+        "description": draft.get("description", f"{plugin} plugin"),
         "version": draft.get("version", "0.1.0"),
         "keywords": draft.get("keywords", []),
         "category": draft.get("category", ""),
@@ -408,19 +408,19 @@ def write_draft_plugin(expertise: str, draft: Dict, output_dir: str) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
-def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
+def evaluate(plugin: str, dry_run: bool, output_dir: str) -> int:
     if not GITHUB_TOKEN:
         print("[error] GITHUB_TOKEN environment variable is required.", file=sys.stderr)
         return 1
 
-    print(f"[evaluate] Expertise: {expertise}  Repo: {GITHUB_REPOSITORY}  Dry-run: {dry_run}")
+    print(f"[evaluate] plugin: {plugin}  Repo: {GITHUB_REPOSITORY}  Dry-run: {dry_run}")
     print()
 
     # Load registry to check which issues have already been evaluated
     registry = Registry()
 
     print("=== Fetching discovery issues ===")
-    issues = get_discovery_issues(expertise)
+    issues = get_discovery_issues(plugin)
     print(f"  Found {len(issues)} discovery issues")
     if not issues:
         print("  No issues to evaluate. Run discover.py first.")
@@ -446,7 +446,7 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
                 if lbl.startswith("source/"):
                     reg_source = lbl.replace("source/", "", 1)
                     break
-            reg_plugin_ref = expertise
+            reg_plugin_ref = plugin
             reg_skill_ref = f"issue#{issue['number']}"
             # SHA of the issue body detects content changes when no embedded key
             reg_sha = content_sha(issue_body)
@@ -466,7 +466,7 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
             continue
 
         print(f"  Scoring issue #{issue['number']}: {issue['title'][:60]}")
-        score = score_discovery_issue(issue_body, expertise)
+        score = score_discovery_issue(issue_body, plugin)
         overall = (
             score.get("relevance", 5)
             + score.get("quality", 5)
@@ -488,7 +488,7 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
             plugin_ref=reg_plugin_ref,
             skill_ref=reg_skill_ref,
             sha=reg_sha,
-            expertise=expertise,
+            plugin=plugin,
             score=score,
             recommendation=score.get("recommendation", "include"),
             lang_tags=lang_tags,
@@ -515,13 +515,13 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
     evaluated.sort(key=lambda x: x["score"].get("overall", 0), reverse=True)
 
     print("=== Compiling plugin draft with AI ===")
-    draft = compile_plugin_draft(expertise, evaluated)
+    draft = compile_plugin_draft(plugin, evaluated)
     print(f"  Draft name: {draft.get('name')}  Skills: {len(draft.get('skills', []))}  Agents: {len(draft.get('agents', []))}")
     print()
 
     if output_dir:
         print("=== Writing draft plugin ===")
-        write_draft_plugin(expertise, draft, output_dir)
+        write_draft_plugin(plugin, draft, output_dir)
         print()
 
     # Persist registry changes
@@ -535,13 +535,13 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate and score discovered skill issues")
-    parser.add_argument("--expertise", required=True, help="Expertise name (e.g. terraformer)")
+    parser.add_argument("--plugin", required=True, help="plugin name (e.g. terraformer)")
     parser.add_argument("--dry-run", action="store_true", help="Print actions without making API calls")
-    parser.add_argument("--output", default="", help="Directory to write the draft plugin (default: drafts/{expertise})")
+    parser.add_argument("--output", default="", help="Directory to write the draft plugin (default: drafts/{plugin})")
     args = parser.parse_args()
 
-    output_dir = args.output or os.path.join("drafts", args.expertise)
-    sys.exit(evaluate(args.expertise, args.dry_run, output_dir))
+    output_dir = args.output or os.path.join("drafts", args.plugin)
+    sys.exit(evaluate(args.plugin, args.dry_run, output_dir))
 
 
 if __name__ == "__main__":

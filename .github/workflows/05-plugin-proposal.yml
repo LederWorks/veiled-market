@@ -1,0 +1,167 @@
+name: "05 · Plugin Proposal"
+
+# Triggered when a plugin-proposal issue is opened.
+# Parses the issue form fields, adds a plugin stub to sources/plugins.json,
+# and opens a proposal PR — feeding Stage 0 on merge.
+
+on:
+  issues:
+    types: [opened]
+
+permissions: {}
+
+concurrency:
+  group: plugin-proposal-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  open-proposal-pr:
+    name: Open proposal PR
+    runs-on: ubuntu-latest
+    # Only run for issues created from the plugin-proposal template
+    if: contains(github.event.issue.labels.*.name, 'type/plugin')
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Parse issue body and write plugin stub ──────────────────────────────
+      - name: Parse issue and update sources/plugins.json
+        id: parse
+        shell: python
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          import json, os, re, sys
+
+          body         = os.environ["ISSUE_BODY"]
+          issue_number = os.environ["ISSUE_NUMBER"]
+          gho          = os.environ["GITHUB_OUTPUT"]
+
+          def extract_field(label):
+              """Pull the first value block after a ### heading."""
+              m = re.search(
+                  r"###\s+" + re.escape(label) + r"\s*\n+(.+?)(?=\n###|\Z)",
+                  body, re.DOTALL
+              )
+              return m.group(1).strip() if m else ""
+
+          plugin_name = extract_field("Plugin name")
+          description = extract_field("Description")[:200]
+
+          # Validate kebab-case, max 64 chars
+          if not re.match(r"^[a-z][a-z0-9-]{0,63}$", plugin_name):
+              print(f"::error::Invalid plugin name {plugin_name!r} — "
+                    "must be kebab-case (a-z, 0-9, hyphens), max 64 chars.")
+              sys.exit(1)
+
+          with open("sources/plugins.json") as f:
+              data = json.load(f)
+
+          # Duplicate check
+          if any(p["name"] == plugin_name for p in data["plugins"]):
+              print(f"Plugin {plugin_name!r} already exists in sources/plugins.json — skipping.")
+              with open(gho, "a") as f:
+                  f.write(f"already_exists=true\n")
+                  f.write(f"plugin_name={plugin_name}\n")
+              sys.exit(0)
+
+          stub = {
+              "name":        plugin_name,
+              "description": description,
+              "version":     "0.1.0",
+              "source":      f"plugins/{plugin_name}",
+              "author": {
+                  "name": "veiled-market contributors",
+                  "url":  "https://github.com/LederWorks/veiled-market",
+              },
+              "homepage":   f"https://github.com/LederWorks/veiled-market/tree/main/plugins/{plugin_name}",
+              "repository": "https://github.com/LederWorks/veiled-market",
+              "license":    "MIT",
+              "keywords":   [],
+              "category":   "",
+              "tags":       [],
+              "categories": [],
+          }
+
+          data["plugins"].append(stub)
+
+          with open("sources/plugins.json", "w") as f:
+              json.dump(data, f, indent=2)
+              f.write("\n")
+
+          with open(gho, "a") as f:
+              f.write(f"plugin_name={plugin_name}\n")
+              description_safe = description.replace("\n", " ")
+              f.write(f"description={description_safe}\n")
+
+          print(f"Added stub for {plugin_name!r}.")
+
+      # ── Push branch and open PR ─────────────────────────────────────────────
+      - name: Push branch and open PR
+        if: steps.parse.outputs.already_exists != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGIN_NAME: ${{ steps.parse.outputs.plugin_name }}
+          DESCRIPTION: ${{ steps.parse.outputs.description }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          BRANCH="proposal/${PLUGIN_NAME}-$(date -u +%Y%m%d%H%M%S)"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "${BRANCH}"
+          git add sources/plugins.json
+          git commit -m "feat(plugins): add ${PLUGIN_NAME} plugin stub"
+          git push origin "${BRANCH}"
+
+          # Write PR body to a file to avoid shell quoting issues
+          cat > /tmp/pr-body.md << BODY
+          ## Plugin Proposal: \`${PLUGIN_NAME}\`
+
+          Adds a stub entry for \`${PLUGIN_NAME}\` to \`sources/plugins.json\`.
+
+          **Description:** ${DESCRIPTION}
+
+          **Proposed by:** issue #${ISSUE_NUMBER}
+
+          ### What happens when this is merged
+
+          1. Merging triggers \`00-setup-plugins.yml\` (Stage 0), which creates the
+             \`veiled-market-${PLUGIN_NAME}\` GitHub Project and ensures all required
+             labels exist.
+          2. Stage 1 discovery begins on the next scheduled run (or can be triggered
+             manually: \`gh workflow run 01-discovery.yml -f plugin=${PLUGIN_NAME}\`).
+          BODY
+
+          PR_URL=$(gh pr create \
+            --title "feat(plugins): add ${PLUGIN_NAME} plugin proposal" \
+            --body-file /tmp/pr-body.md \
+            --label "type/plugin" \
+            --label "status/draft" \
+            --head "${BRANCH}")
+
+          echo "Opened PR: ${PR_URL}"
+
+          gh issue comment "${ISSUE_NUMBER}" \
+            --body "Thanks for the proposal! 🎉 A PR has been opened to add \`${PLUGIN_NAME}\` to the marketplace: ${PR_URL}
+
+          Once merged, Stage 0 will automatically create the plugin's GitHub Project and labels. Discovery will run on the next scheduled Monday or can be triggered manually."
+
+      # ── Already-exists comment ──────────────────────────────────────────────
+      - name: Comment — plugin already exists
+        if: steps.parse.outputs.already_exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGIN_NAME: ${{ steps.parse.outputs.plugin_name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "${ISSUE_NUMBER}" \
+            --body "The plugin \`${PLUGIN_NAME}\` already exists in \`sources/plugins.json\`. No PR was opened.
+
+          If you'd like to update an existing plugin, please edit \`sources/plugins.json\` directly and open a PR."

@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/LederWorks/veiled-market/main/schemas/plugins.schema.json",
+  "title": "Central Plugins Registry",
+  "description": "Source-of-truth for all veiled-market plugins. finalize.py reads this file and generates both .github/plugin/marketplace.json (Copilot CLI) and .claude-plugin/marketplace.json (Claude Code) from it.",
+  "type": "object",
+  "required": ["marketplace", "plugins"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "marketplace": {
+      "type": "object",
+      "description": "Marketplace-level metadata written verbatim into the top-level fields of both generated marketplace.json files.",
+      "required": ["name", "owner"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Marketplace identifier (kebab-case). Must be globally unique — reserved names like claude-code-marketplace are blocked.",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "maxLength": 64
+        },
+        "owner": {
+          "type": "object",
+          "description": "Marketplace maintainer information.",
+          "required": ["name"],
+          "additionalProperties": false,
+          "properties": {
+            "name":  { "type": "string",  "description": "Name of the maintainer or team." },
+            "email": { "type": "string",  "format": "email", "description": "Contact email." },
+            "url":   { "type": "string",  "format": "uri",   "description": "URL of the maintainer or organization (extension used by Copilot CLI)." }
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "description": { "type": "string",  "description": "Brief marketplace description." },
+            "version":     { "type": "string",  "description": "Marketplace version (semver).", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+            "pluginRoot":  { "type": "string",  "description": "Base directory prepended to relative plugin source paths in the generated marketplace files." }
+          }
+        }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "description": "Canonical list of finalized plugins. Each entry is written into both generated marketplace.json files unchanged. Shape is identical to a marketplace.json plugin entry.",
+      "items": {
+        "$ref": "marketplace.schema.json#/$defs/pluginEntry"
+      }
+    }
+  }
+}

@@ -1,15 +1,15 @@
 name: "🔍 Skill Discovery"
-description: "Report a discovered skill, agent, hook, or plugin resource for a specific expertise"
-title: "[discovery] {expertise}: {resource-name}"
+description: "Report a discovered skill, agent, hook, or plugin resource for a specific plugin"
+title: "[discovery] {plugin}: {resource-name}"
 labels:
   - "status/discovered"
   - "ai/discovery"
 body:
   - type: dropdown
-    id: expertise
+    id: plugin
     attributes:
-      label: Expertise
-      description: Which expertise does this resource belong to?
+      label: plugin
+      description: Which plugin does this resource belong to?
       options:
         - terraformer
         - kubernetes

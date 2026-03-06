@@ -1,0 +1,219 @@
+name: "01 · Discover & Draft"
+
+# Discovers resources from all registered marketplace sources for every plugin.
+# Creates one GitHub Issue per resource, automatically labeled status/draft so
+# Stage 2 (Evaluate) picks them up without any manual intervention.
+# Plugins are processed sequentially (max-parallel: 1); source/resource combos
+# for each plugin run in a shell loop within the same job.
+
+on:
+  workflow_run:
+    workflows: ["00 · Setup Plugins"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: "Limit to a specific plugin name (leave blank for all)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run — print actions without creating issues or commits"
+        type: boolean
+        required: false
+        default: false
+  schedule:
+    - cron: "0 6 * * 1"   # Weekly — Monday 06:00 UTC
+
+concurrency:
+  group: discovery-${{ github.ref }}
+  cancel-in-progress: false
+
+# Deny all permissions at the workflow level; each job declares its minimum.
+permissions: {}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1 — Read plugins.json and build the per-plugin matrix
+  # ---------------------------------------------------------------------------
+  setup:
+    name: Read plugin list
+    runs-on: ubuntu-latest
+    # Skip when upstream workflow_run failed
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.read.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build plugin matrix
+        id: read
+        env:
+          PLUGIN_FILTER: ${{ inputs.plugin || '' }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          plugin_filter = os.environ.get("PLUGIN_FILTER", "").strip()
+          with open("sources/plugins.json") as f:
+              data = json.load(f)
+          plugins = data.get("plugins", [])
+          if plugin_filter:
+              plugins = [p for p in plugins if p["name"] == plugin_filter]
+          matrix = [{"name": p["name"]} for p in plugins]
+          print(f"Discovery will run for {len(matrix)} plugin(s): {[p['name'] for p in plugins]}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+          EOF
+
+  # ---------------------------------------------------------------------------
+  # Job 2 — Run discovery for each plugin sequentially (max-parallel: 1).
+  #           All source/resource combos are looped within each plugin job.
+  # ---------------------------------------------------------------------------
+  discover:
+    name: "Discover: ${{ matrix.name }}"
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.setup.outputs.matrix) }}
+      max-parallel: 1    # Plugins run one at a time — sequential per plugin
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Discover all sources for ${{ matrix.name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PLUGIN: ${{ matrix.name }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          mkdir -p /tmp/patches
+          python3 - <<'PYEOF'
+          import json, os, subprocess
+          plugin  = os.environ["PLUGIN"]
+          dry_run = os.environ.get("DRY_RUN", "false").lower() == "true"
+          dry_flag = ["--dry-run"] if dry_run else []
+
+          with open("sources/marketplaces.json") as f:
+              sources = json.load(f).get("sources", [])
+
+          patch_num = 0
+          for src in sources:
+              src_id = src["id"]
+              for resource in src.get("resources", []):
+                  patch_file = f"/tmp/patches/{patch_num:04d}_{src_id}_{resource}.json"
+                  cmd = [
+                      "python3", "scripts/discover.py",
+                      "--plugin",          plugin,
+                      "--source",          src_id,
+                      "--resource",        resource,
+                      "--registry-output", patch_file,
+                  ] + dry_flag
+                  print(f"\n--- {src_id} / {resource} ---")
+                  result = subprocess.run(cmd, check=False)
+                  if result.returncode != 0:
+                      print(f"  [warn] discover.py exited {result.returncode} for {src_id}/{resource}")
+                  patch_num += 1
+          PYEOF
+
+      - name: Assign new issues to GitHub Project
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PIPELINE_TOKEN }}
+          PLUGIN: ${{ matrix.name }}
+        run: |
+          echo "::add-mask::${{ secrets.PIPELINE_TOKEN }}"
+          PROJECT_NUM=$(gh project list --owner LederWorks --format json \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); target='veiled-market-${{ matrix.name }}'; proj=next((p for p in d.get('projects',[]) if p['title']==target),None); print(proj['number'] if proj else '')" \
+            2>/dev/null || echo "")
+          if [ -z "$PROJECT_NUM" ]; then
+            echo "No project found for veiled-market-${{ matrix.name }} — skipping assignment"
+          else
+            gh issue list \
+              --label "plugin/${{ matrix.name }}" \
+              --label "status/draft" \
+              --state open \
+              --json number \
+              --jq '.[].number' \
+              --repo "${{ github.repository }}" \
+            | while read ISSUE_NUM; do
+                gh project item-add "$PROJECT_NUM" \
+                  --owner LederWorks \
+                  --url "https://github.com/${{ github.repository }}/issues/$ISSUE_NUM" \
+                  2>/dev/null || true
+              done
+            echo "Project assignment complete for veiled-market-${{ matrix.name }}"
+          fi
+
+      - name: Upload registry patches for ${{ matrix.name }}
+        if: ${{ inputs.dry_run != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: "registry-patches--${{ matrix.name }}"
+          path: /tmp/patches/
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------
+  # Job 3 — Merge all registry patches and commit with [skip ci]
+  # ---------------------------------------------------------------------------
+  commit-registry:
+    name: Commit registry updates
+    needs: discover
+    if: ${{ !cancelled() && inputs.dry_run != 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download all registry patches
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "registry-patches--*"
+          path: /tmp/all-patches/
+          merge-multiple: true
+
+      - name: Merge patches
+        run: |
+          PATCHES=$(find /tmp/all-patches -name '*.json' 2>/dev/null | sort | tr '\n' ' ')
+          if [ -z "$PATCHES" ]; then
+            echo "No registry patches to merge."
+            exit 0
+          fi
+          python3 scripts/registry.py merge-patches $PATCHES
+
+      - name: Commit and push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sources/registry.json
+          if git diff --cached --quiet; then
+            echo "No registry changes to commit."
+          else
+            git commit -m "chore(registry): merge discovery patches [skip ci]"
+            git push origin HEAD
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Discovery complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Open the [Issues tab](https://github.com/${{ github.repository }}/issues?q=label%3Astatus%2Fdraft) to review discovered resources labeled \`status/draft\`." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The **02 · Evaluate** workflow will auto-trigger to compile draft plugins from the labeled issues." >> $GITHUB_STEP_SUMMARY

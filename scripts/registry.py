@@ -17,7 +17,7 @@ Each leaf entry has::
     {
         "sha":            "<content SHA-256 or git blob SHA>",
         "last_evaluated": "<ISO-8601 UTC>",
-        "expertise":      "terraformer",
+        "plugin":      "terraformer",
         "lang_tags":      ["bash", "hcl"],
         "platform_tags":  ["aws", "azure", "gcp"],
         "score": {
@@ -46,7 +46,7 @@ Usage::
             plugin_ref="owner/repo",
             skill_ref="path/SKILL.md",
             sha="abc",
-            expertise="terraformer",
+            plugin="terraformer",
             score=score,
             recommendation="include",
             lang_tags=["bash"],
@@ -59,10 +59,11 @@ Usage::
 import hashlib
 import json
 import os
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "..", "sources", "skill-registry.json")
+_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "..", "sources", "registry.json")
 
 
 class Registry:
@@ -146,7 +147,8 @@ class Registry:
         plugin_ref: str,
         skill_ref: str,
         sha: str,
-        expertise: str,
+        plugin: str,
+        resource_type: str = "",
         score: Optional[Dict[str, Any]] = None,
         recommendation: str = "include",
         lang_tags: Optional[List[str]] = None,
@@ -154,14 +156,15 @@ class Registry:
         issue_number: Optional[int] = None,
         notes: str = "",
     ) -> None:
-        """Record that a skill has been evaluated."""
+        """Record that a resource has been evaluated."""
         mp = self._data.setdefault("marketplaces", {})
         plugins = mp.setdefault(source, {})
         skills = plugins.setdefault(plugin_ref, {})
         skills[skill_ref] = {
             "sha": sha,
             "last_evaluated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "expertise": expertise,
+            "plugin": plugin,
+            "resource_type": resource_type,
             "lang_tags": sorted(set(lang_tags or [])),
             "platform_tags": sorted(set(platform_tags or [])),
             "score": score or {},
@@ -172,14 +175,14 @@ class Registry:
 
     def list_evaluated(
         self,
-        expertise: Optional[str] = None,
+        plugin: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Return all evaluated entries, optionally filtered by expertise."""
+        """Return all evaluated entries, optionally filtered by plugin."""
         out = []
         for source, plugins in self._data.get("marketplaces", {}).items():
             for plugin_ref, skills in plugins.items():
                 for skill_ref, entry in skills.items():
-                    if expertise and entry.get("expertise") != expertise:
+                    if plugin and entry.get("plugin") != plugin:
                         continue
                     out.append({
                         "source": source,
@@ -189,9 +192,9 @@ class Registry:
                     })
         return out
 
-    def stats(self, expertise: Optional[str] = None) -> Dict[str, Any]:
+    def stats(self, plugin: Optional[str] = None) -> Dict[str, Any]:
         """Return summary statistics for the registry."""
-        entries = self.list_evaluated(expertise)
+        entries = self.list_evaluated(plugin)
         recommendations: Dict[str, int] = {}
         sources: Dict[str, int] = {}
         for e in entries:
@@ -320,10 +323,10 @@ def _cli() -> None:
     sub = parser.add_subparsers(dest="cmd")
 
     stats_p = sub.add_parser("stats", help="Print registry statistics")
-    stats_p.add_argument("--expertise", default=None)
+    stats_p.add_argument("--plugin", default=None)
 
     list_p = sub.add_parser("list", help="List all evaluated entries")
-    list_p.add_argument("--expertise", default=None)
+    list_p.add_argument("--plugin", default=None)
 
     check_p = sub.add_parser("check", help="Check if a skill needs evaluation")
     check_p.add_argument("source")
@@ -331,18 +334,35 @@ def _cli() -> None:
     check_p.add_argument("skill_ref")
     check_p.add_argument("sha")
 
+    merge_p = sub.add_parser("merge-patches", help="Merge registry patch files from parallel discover jobs")
+    merge_p.add_argument("patches", nargs="+", metavar="PATCH_FILE", help="JSON patch file(s) produced by discover.py --registry-output")
+
     args = parser.parse_args()
     reg = Registry()
 
     if args.cmd == "stats":
-        s = reg.stats(args.expertise)
+        s = reg.stats(args.plugin)
         print(json.dumps(s, indent=2))
     elif args.cmd == "list":
-        entries = reg.list_evaluated(args.expertise)
+        entries = reg.list_evaluated(args.plugin)
         print(json.dumps(entries, indent=2))
     elif args.cmd == "check":
         needs = reg.needs_evaluation(args.source, args.plugin_ref, args.skill_ref, args.sha)
         print("needs_evaluation:", needs)
+    elif args.cmd == "merge-patches":
+        merged = 0
+        for patch_file in args.patches:
+            try:
+                with open(patch_file) as f:
+                    patch = json.load(f)
+            except (OSError, json.JSONDecodeError) as exc:
+                print(f"[warn] Could not read patch file {patch_file}: {exc}", file=sys.stderr)
+                continue
+            for entry in patch.get("entries", []):
+                reg.mark_evaluated(**{k: v for k, v in entry.items()})
+                merged += 1
+        reg.save()
+        print(f"Merged {merged} entr{'y' if merged == 1 else 'ies'} from {len(args.patches)} patch file(s).")
     else:
         parser.print_help()
 

@@ -1,6 +1,6 @@
 name: "🧩 Plugin Proposal"
-description: "Propose a new plugin or expertise for the veiled-market marketplace"
-title: "[proposal] {expertise}: {plugin-name}"
+description: "Propose a new plugin or plugin for the veiled-market marketplace"
+title: "[proposal] {plugin}: {plugin-name}"
 labels:
   - "type/plugin"
   - "status/draft"
@@ -15,10 +15,10 @@ body:
       required: true
 
   - type: input
-    id: expertise
+    id: plugin
     attributes:
-      label: Expertise
-      description: The expertise or domain this plugin covers
+      label: plugin
+      description: The plugin or domain this plugin covers
       placeholder: "terraformer"
     validations:
       required: true
@@ -77,7 +77,7 @@ body:
     id: motivation
     attributes:
       label: Motivation
-      description: Why should this plugin be in veiled-market?
+      description: Why should this plugin be in the Veiled Market?
 
   - type: checkboxes
     id: checklist
@@ -85,5 +85,5 @@ body:
       label: Proposal checklist
       options:
         - label: I have searched for existing plugins/skills in the marketplace
-        - label: This expertise is not already covered by an existing plugin
+        - label: This plugin is not already covered by an existing plugin
         - label: I am willing to review or contribute to this plugin

@@ -1,0 +1,313 @@
+name: "00 · Setup Plugins"
+
+# Triggered when the plugin registry or marketplace source list changes.
+# Validates schemas, creates GitHub Projects per plugin (from template #12),
+# reconciles previously excluded issues, and ensures all labels exist.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sources/plugins.json"
+      - "sources/marketplaces.json"
+  workflow_dispatch:
+
+concurrency:
+  group: setup-${{ github.ref }}
+  cancel-in-progress: false   # never cancel a setup mid-flight
+
+# Deny all permissions at the workflow level; each job declares its minimum.
+permissions: {}
+
+# ---------------------------------------------------------------------------
+# Job 1 — Schema validation (fast gate; fails before any API call)
+# ---------------------------------------------------------------------------
+jobs:
+  validate:
+    name: Validate schemas
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install jsonschema
+        run: pip install jsonschema
+
+      - name: Validate sources/plugins.json
+        run: |
+          python3 - <<'EOF'
+          import json, jsonschema, sys
+          with open("schemas/plugins.shema.json") as f:
+              schema = json.load(f)
+          with open("sources/plugins.json") as f:
+              data = json.load(f)
+          jsonschema.validate(data, schema)
+          print("✅ sources/plugins.json is valid")
+          EOF
+
+      - name: Validate sources/marketplaces.json
+        run: |
+          python3 - <<'EOF'
+          import json, jsonschema, sys
+          with open("schemas/marketplaces.schema.json") as f:
+              schema = json.load(f)
+          with open("sources/marketplaces.json") as f:
+              data = json.load(f)
+          jsonschema.validate(data, schema)
+          print("✅ sources/marketplaces.json is valid")
+          EOF
+
+# ---------------------------------------------------------------------------
+# Job 2 — Read plugin list and build matrix for downstream jobs
+# ---------------------------------------------------------------------------
+  read-plugins:
+    name: Read plugin list
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      plugins:        ${{ steps.read.outputs.plugins }}
+      plugin_names:   ${{ steps.read.outputs.plugin_names }}
+      plugin_matrix:  ${{ steps.read.outputs.plugin_matrix }}
+      all_source_ids: ${{ steps.read.outputs.all_source_ids }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse plugins.json and marketplaces.json
+        id: read
+        run: |
+          python3 - <<'EOF'
+          import json, os
+
+          # Known cloud/platform tags (routed to platform/*/ labels)
+          PLATFORM_TAGS = {
+            "aws", "azure", "gcp", "oci", "github-actions", "azure-devops",
+            "terraform-cloud", "kubernetes", "k8s", "docker", "github",
+            "gitlab", "bitbucket", "circleci", "jenkins",
+          }
+
+          with open("sources/plugins.json") as f:
+              plugins_data = json.load(f)
+          with open("sources/marketplaces.json") as f:
+              sources_data = json.load(f)
+
+          plugins = plugins_data.get("plugins", [])
+          all_source_ids = ",".join(s["id"] for s in sources_data.get("sources", []))
+
+          matrix = []
+          for p in plugins:
+              tags = set(p.get("tags", []))
+              platform_tags = ",".join(sorted(tags & PLATFORM_TAGS))
+              lang_tags = ",".join(sorted(tags - PLATFORM_TAGS))
+              matrix.append({
+                  "name": p["name"],
+                  "source_ids": all_source_ids,
+                  "lang_tags": lang_tags,
+                  "platform_tags": platform_tags,
+              })
+
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a") as f:
+              f.write(f"plugins={json.dumps(plugins)}\n")
+              f.write(f"plugin_names={json.dumps([p['name'] for p in plugins])}\n")
+              f.write(f"plugin_matrix={json.dumps(matrix)}\n")
+              f.write(f"all_source_ids={all_source_ids}\n")
+
+          print(f"Found {len(plugins)} plugins: {[p['name'] for p in plugins]}")
+          EOF
+
+# ---------------------------------------------------------------------------
+# Job 3 — Create / upsert GitHub Projects v2 per plugin (from template #12)
+#           Uses a GitHub App installation token (APP_ID + APP_PRIVATE_KEY)
+#           for short-lived, auditable credentials with Projects: write scope.
+# ---------------------------------------------------------------------------
+  setup-projects:
+    name: Setup GitHub Projects
+    needs: read-plugins
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: LederWorks
+
+      - name: Create/upsert veiled-market-{plugin} projects
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, sys, urllib.request, urllib.error
+
+          token = os.environ.get("GITHUB_TOKEN", "")
+          if not token:
+              print("[warn] APP token not available — skipping GitHub Projects setup")
+              sys.exit(0)
+
+          plugins = json.loads(os.environ.get("PLUGINS", '[]'))
+          org = "LederWorks"
+          template_number = 12
+
+          def graphql(query, variables=None):
+              payload = json.dumps({"query": query, "variables": variables or {}}).encode()
+              req = urllib.request.Request(
+                  "https://api.github.com/graphql",
+                  data=payload,
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Content-Type": "application/json",
+                      "User-Agent": "veiled-market-setup/1.0",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      result = json.loads(r.read())
+              except urllib.error.HTTPError as exc:
+                  print(f"  [warn] GraphQL HTTP {exc.code}: {exc.read().decode()[:200]}")
+                  return None
+              if "errors" in result:
+                  print(f"  [warn] GraphQL errors: {result['errors']}")
+                  return None
+              return result.get("data")
+
+          # Resolve org and template node IDs
+          data = graphql(
+              "query($org:String!,$num:Int!){organization(login:$org){id projectV2(number:$num){id}}}",
+              {"org": org, "num": template_number},
+          )
+          if not data:
+              print("[warn] Could not query org/template — skipping Projects setup")
+              sys.exit(0)
+          org_id = data["organization"]["id"]
+          template_id = data["organization"]["projectV2"]["id"]
+          print(f"Org ID: {org_id}  Template ID: {template_id}")
+
+          # List existing projects to avoid duplicates
+          data = graphql(
+              "query($org:String!){organization(login:$org){projectsV2(first:100){nodes{id title}}}}",
+              {"org": org},
+          )
+          existing = {p["title"]: p["id"] for p in (data or {}).get("organization", {}).get("projectsV2", {}).get("nodes", [])}
+
+          for plugin in plugins:
+              name = plugin["name"]
+              title = f"veiled-market-{name}"
+              if title in existing:
+                  print(f"  Project '{title}' already exists — skipping")
+                  continue
+              result = graphql(
+                  """mutation($tid:ID!,$oid:ID!,$title:String!){
+                      copyProjectV2(input:{projectId:$tid,ownerId:$oid,title:$title,includeDraftIssues:false}){
+                          projectV2{id number title}
+                      }
+                  }""",
+                  {"tid": template_id, "oid": org_id, "title": title},
+              )
+              if result:
+                  proj = result.get("copyProjectV2", {}).get("projectV2", {})
+                  print(f"  Created project '{title}' #{proj.get('number')} (id={proj.get('id')})")
+              else:
+                  print(f"  [warn] Failed to create project '{title}'")
+          PYEOF
+        env:
+          PLUGINS: ${{ needs.read-plugins.outputs.plugins }}
+
+# ---------------------------------------------------------------------------
+# Job 4 — Reconcile previously excluded issues
+#           Applies status/excluded + removes status/draft on any open issue
+#           whose registry.json entry carries recommendation: "exclude".
+# ---------------------------------------------------------------------------
+  reconcile-issues:
+    name: Reconcile excluded issues
+    needs: read-plugins
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply status/excluded to excluded issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGIN_NAMES: ${{ needs.read-plugins.outputs.plugin_names }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, subprocess, os, sys
+
+          repo = os.environ.get("GITHUB_REPOSITORY", "LederWorks/veiled-market")
+          plugin_names = json.loads(os.environ.get("PLUGIN_NAMES", "[]"))
+
+          try:
+              with open("sources/registry.json") as f:
+                  registry = json.load(f)
+          except FileNotFoundError:
+              print("No registry.json found — skipping reconciliation")
+              sys.exit(0)
+
+          marketplaces = registry.get("marketplaces", {})
+
+          for name in plugin_names:
+              result = subprocess.run(
+                  ["gh", "issue", "list",
+                   "--label", f"plugin/{name}",
+                   "--state", "open",
+                   "--json", "number,labels",
+                   "--repo", repo],
+                  capture_output=True, text=True,
+              )
+              if result.returncode != 0:
+                  continue
+              issues = json.loads(result.stdout or "[]")
+              issue_by_num = {i["number"]: i for i in issues}
+
+              # Walk registry entries for this plugin
+              for src_data in marketplaces.get(name, {}).values():
+                  if not isinstance(src_data, dict):
+                      continue
+                  for entry in src_data.values():
+                      if not isinstance(entry, dict):
+                          continue
+                      if entry.get("recommendation") != "exclude":
+                          continue
+                      issue_num = entry.get("issue_number")
+                      if issue_num and issue_num in issue_by_num:
+                          print(f"  Excluding issue #{issue_num} for plugin '{name}'")
+                          subprocess.run([
+                              "gh", "issue", "edit", str(issue_num),
+                              "--add-label", "status/excluded",
+                              "--remove-label", "status/draft",
+                              "--repo", repo,
+                          ])
+          PYEOF
+
+# ---------------------------------------------------------------------------
+# Job 5 — Ensure all required GitHub labels exist per plugin
+#           Calls 00-setup-labels.yml as a reusable workflow (matrix over plugins).
+# ---------------------------------------------------------------------------
+  setup-labels:
+    name: Labels for ${{ matrix.name }}
+    needs: read-plugins
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.read-plugins.outputs.plugin_matrix) }}
+      fail-fast: false
+    uses: ./.github/workflows/00-setup-labels.yml
+    with:
+      plugin:        ${{ matrix.name }}
+      source_ids:    ${{ matrix.source_ids }}
+      lang_tags:     ${{ matrix.lang_tags }}
+      platform_tags: ${{ matrix.platform_tags }}
+    secrets: inherit
