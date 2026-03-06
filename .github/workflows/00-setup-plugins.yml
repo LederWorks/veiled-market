@@ -147,6 +147,7 @@ jobs:
       - name: Create/upsert veiled-market-{plugin} projects
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PLUGINS: ${{ needs.read-plugins.outputs.plugins }}
         run: |
           python3 - <<'PYEOF'
           import json, os, sys, urllib.request, urllib.error
@@ -221,8 +222,6 @@ jobs:
               else:
                   print(f"  [warn] Failed to create project '{title}'")
           PYEOF
-        env:
-          PLUGINS: ${{ needs.read-plugins.outputs.plugins }}
 
 # ---------------------------------------------------------------------------
 # Job 4 — Reconcile previously excluded issues
