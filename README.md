@@ -251,4 +251,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
 
 ## 📄 License
 
-[MIT](LICENSE) — see the LICENSE file for details.
+[Apache V2.0](LICENSE) — see the LICENSE file for details.
