@@ -61,7 +61,13 @@ jobs:
           plugins = data.get("plugins", [])
           if plugin_filter:
               plugins = [p for p in plugins if p["name"] == plugin_filter]
-          matrix = [{"name": p["name"]} for p in plugins]
+          matrix = [
+              {
+                  "name": p["name"],
+                  "keywords": ",".join(p.get("keywords", [p["name"]])),
+              }
+              for p in plugins
+          ]
           print(f"Discovery will run for {len(matrix)} plugin(s): {[p['name'] for p in plugins]}")
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"matrix={json.dumps(matrix)}\n")
@@ -95,6 +101,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PLUGIN: ${{ matrix.name }}
+          PLUGIN_KEYWORDS: ${{ matrix.keywords }}
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
         run: |
           mkdir -p /tmp/patches
@@ -103,6 +110,7 @@ jobs:
           plugin  = os.environ["PLUGIN"]
           dry_run = os.environ.get("DRY_RUN", "false").lower() == "true"
           dry_flag = ["--dry-run"] if dry_run else []
+          plugin_keywords = os.environ.get("PLUGIN_KEYWORDS", plugin)
 
           with open("sources/marketplaces.json") as f:
               sources = json.load(f).get("sources", [])
@@ -115,6 +123,7 @@ jobs:
                   cmd = [
                       "python3", "scripts/discover.py",
                       "--plugin",          plugin,
+                      "--keywords",        plugin_keywords,
                       "--source",          src_id,
                       "--resource",        resource,
                       "--registry-output", patch_file,
@@ -213,10 +222,21 @@ jobs:
           git add sources/registry.json
           if git diff --cached --quiet; then
             echo "No registry changes to commit."
-          else
-            git commit -m "chore(registry): merge discovery patches [skip ci]"
-            git push origin HEAD
+            exit 0
           fi
+          git commit -m "chore(registry): merge discovery patches [skip ci]"
+          # Retry push with rebase in case other commits landed on main during the run.
+          for attempt in 1 2 3; do
+            if git push origin HEAD; then
+              break
+            fi
+            echo "Push attempt $attempt failed — rebasing and retrying..."
+            git stash
+            git pull --rebase origin main
+            git stash pop || true
+            git add sources/registry.json
+            git diff --cached --quiet || git commit --amend --no-edit
+          done
 
       - name: Summary
         run: |

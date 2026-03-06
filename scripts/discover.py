@@ -146,7 +146,7 @@ def fetch_repo_resources(source: Dict, keywords: str, resource_type: str) -> Lis
     if not patterns:
         return []
 
-    kw = keywords.lower()
+    kw_list = [k.strip() for k in keywords.lower().split(",") if k.strip()] if keywords else []
     tree_items = tree_data.get("tree", [])
 
     def _make_item(path: str, sha_val: str, rtype: str) -> Dict:
@@ -172,8 +172,11 @@ def fetch_repo_resources(source: Dict, keywords: str, resource_type: str) -> Lis
         # Must match at least one resource-type pattern
         if not any(re.search(pat, path, re.IGNORECASE) for pat in patterns):
             continue
-        # Keyword must appear in the path, repo name, or repo description
-        if kw and kw not in path.lower() and kw not in repo.lower() and kw not in repo_desc.lower():
+        # At least one keyword must appear in the path, repo name, or repo description
+        if kw_list and not any(
+            kw in path.lower() or kw in repo.lower() or kw in repo_desc.lower()
+            for kw in kw_list
+        ):
             continue
         results.append(_make_item(path, item.get("sha", ""), resource_type))
 
@@ -208,7 +211,10 @@ def fetch_repo_resources(source: Dict, keywords: str, resource_type: str) -> Lis
                     if not any(re.search(pat, cpath, re.IGNORECASE) for pat in comp_patterns):
                         continue
                     # Keyword check — same rule as primary pass
-                    if kw and kw not in cpath.lower() and kw not in repo.lower() and kw not in repo_desc.lower():
+                    if kw_list and not any(
+                        kw in cpath.lower() or kw in repo.lower() or kw in repo_desc.lower()
+                        for kw in kw_list
+                    ):
                         continue
                     seen_paths.add(cpath)
                     results.append(_make_item(cpath, tree_item.get("sha", ""), comp_type))
@@ -271,8 +277,16 @@ def ensure_labels(
         })
 
     url = f"{GITHUB_API}/repos/{GITHUB_REPOSITORY}/labels"
-    existing_data = _get(url + "?per_page=100")
-    existing = {lbl["name"] for lbl in (existing_data or [])}
+    existing: Set[str] = set()
+    page = 1
+    while True:
+        page_data = _get(f"{url}?per_page=100&page={page}")
+        if not page_data:
+            break
+        existing.update(lbl["name"] for lbl in page_data)
+        if len(page_data) < 100:
+            break
+        page += 1
 
     for lbl in base_labels:
         if lbl["name"] in existing:
@@ -411,9 +425,12 @@ def discover(
         print(f"           Platform filter:  {sorted(platform_tags)}")
     print()
 
-    print("=== Ensuring labels ===")
-    ensure_labels(plugin, lang_tags, platform_tags, dry_run)
-    print()
+    # Skip label setup when filtering by source — Stage 0 owns label management and
+    # ensure_labels would be called redundantly for every (source, resource) subprocess.
+    if not source_filter:
+        print("=== Ensuring labels ===")
+        ensure_labels(plugin, lang_tags, platform_tags, dry_run)
+        print()
 
     registry = Registry()
 
