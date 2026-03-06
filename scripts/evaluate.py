@@ -256,22 +256,71 @@ Respond ONLY with valid JSON — no markdown fences.
 # ---------------------------------------------------------------------------
 
 def get_discovery_issues(plugin: str) -> List[Dict]:
-    """Fetch all open issues labeled plugin/{plugin} + status/discovered."""
+    """Fetch all open issues labeled plugin/{plugin} + status/draft.
+
+    Tries the REST API first; falls back to ``gh issue list`` when the token
+    lacks direct API access (e.g. workflow_run context on org repos).
+    """
+    import subprocess
+
     label = urllib.parse.quote(f"plugin/{plugin}")
-    status = urllib.parse.quote("status/discovered")
-    url = f"{GITHUB_API}/repos/{GITHUB_REPOSITORY}/issues?labels={label},{status}&state=open&per_page=50"
-    issues = _get(url)
-    if not issues:
+    status = urllib.parse.quote("status/draft")
+    url = f"{GITHUB_API}/repos/{GITHUB_REPOSITORY}/issues?labels={label},{status}&state=open&per_page=100"
+
+    def _parse_rest(issues_list: List) -> List[Dict]:
+        return [
+            {
+                "number": i["number"],
+                "title": i["title"],
+                "body": i.get("body") or "",
+                "url": i["html_url"],
+                "labels": [lbl["name"] for lbl in i.get("labels", [])],
+            }
+            for i in issues_list
+            if isinstance(i, dict)
+        ]
+
+    # --- REST API path ---
+    first_page = _get(url)
+    if first_page is not None:
+        all_issues = list(first_page)
+        page = 2
+        while len(first_page) == 100:
+            first_page = _get(f"{url}&page={page}") or []
+            all_issues.extend(first_page)
+            page += 1
+        return _parse_rest(all_issues)
+
+    # --- gh CLI fallback (handles workflow_run token restrictions on org repos) ---
+    print("  [info] REST API returned no data — falling back to gh CLI", file=sys.stderr)
+    result = subprocess.run(
+        [
+            "gh", "issue", "list",
+            "--repo", GITHUB_REPOSITORY,
+            "--label", f"plugin/{plugin}",
+            "--label", "status/draft",
+            "--state", "open",
+            "--limit", "200",
+            "--json", "number,title,body,url,labels",
+        ],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print(f"  [warn] gh issue list failed: {result.stderr[:200]}", file=sys.stderr)
+        return []
+    try:
+        raw = json.loads(result.stdout or "[]")
+    except json.JSONDecodeError:
         return []
     return [
         {
             "number": i["number"],
             "title": i["title"],
             "body": i.get("body") or "",
-            "url": i["html_url"],
+            "url": i.get("url", ""),
             "labels": [lbl["name"] for lbl in i.get("labels", [])],
         }
-        for i in issues
+        for i in raw
         if isinstance(i, dict)
     ]
 
