@@ -86,7 +86,7 @@ jobs:
           create_label "lang/arm"                "0078d4" "Azure ARM templates"
           create_label "lang/cloudformation"     "ff9900" "AWS CloudFormation"
           create_label "lang/pulumi"             "8a3391" "Pulumi programs"
-          create_label "lang/ansible"            "e00"    "Ansible playbooks / roles"
+          create_label "lang/ansible"            "e00000" "Ansible playbooks / roles"
           create_label "lang/helm"               "0f1689" "Helm charts"
           create_label "lang/dockerfile"         "0db7ed" "Dockerfiles / container config"
 

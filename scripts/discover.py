@@ -109,6 +109,8 @@ def search_github_code(expertise: str) -> List[Dict]:
                 "url": item.get("html_url", ""),
                 "description": item.get("repository", {}).get("description") or "",
                 "raw_url": item.get("download_url") or item.get("html_url", ""),
+                # git blob SHA of the file — authoritative content signal
+                "sha": item.get("sha", ""),
             })
         time.sleep(1)  # be polite to the search API
     return results
@@ -144,6 +146,8 @@ def search_github_repos(expertise: str) -> List[Dict]:
                 "stars": repo.get("stargazers_count", 0),
                 "license": (repo.get("license") or {}).get("spdx_id", ""),
                 "topics": repo.get("topics", []),
+                # pushed_at is a reliable content-change signal (stars are not)
+                "pushed_at": repo.get("pushed_at") or repo.get("updated_at", ""),
             })
         time.sleep(1)
     return results
@@ -197,6 +201,10 @@ def ensure_labels(
         {"name": "ai/discovery", "color": "c5def5", "description": "Created by the AI discovery workflow"},
         {"name": "ai/draft", "color": "bfdadc", "description": "Created by the AI draft workflow"},
         {"name": "ai/evaluation", "color": "d4c5f9", "description": "Created by the AI evaluation workflow"},
+        # Source labels used by the discovery script
+        {"name": "source/github-search", "color": "24292e", "description": "Sourced from GitHub code search"},
+        {"name": "source/github-repos", "color": "24292e", "description": "Sourced from GitHub repository search"},
+        {"name": "source/awesome-copilot", "color": "0075ca", "description": "Sourced from github/awesome-copilot"},
     ]
 
     # Add lang labels for the requested tags
@@ -263,9 +271,27 @@ def create_issue(title: str, body: str, labels: List[str], dry_run: bool) -> Opt
 # Issue body builders
 # ---------------------------------------------------------------------------
 
+def _registry_key_comment(source: str, plugin_ref: str, skill_ref: str, sha: str) -> str:
+    """Return an HTML comment embedding the registry key for this discovery.
+
+    ``evaluate.py`` parses this comment to look up and update the exact same
+    registry entry, avoiding a keying mismatch between the two scripts.
+    """
+    key = json.dumps({
+        "source": source,
+        "plugin_ref": plugin_ref,
+        "skill_ref": skill_ref,
+        "sha": sha,
+    }, separators=(",", ":"))
+    return f"<!-- veiled-market-registry:{key} -->"
+
+
 def _github_code_body(item: Dict, expertise: str, lang_tags: Set[str], platform_tags: Set[str]) -> str:
     lang_section = f"\n**Languages:** {', '.join(f'`{t}`' for t in sorted(lang_tags))}" if lang_tags else ""
     plat_section = f"\n**Platforms:** {', '.join(f'`{t}`' for t in sorted(platform_tags))}" if platform_tags else ""
+    # Use git blob SHA as the content hash (already captured from the API response)
+    sha = item.get("sha", content_sha(item.get("url", item.get("repo", ""))))
+    reg_comment = _registry_key_comment("github-search", item["repo"], f"{item['repo']}/{item['path']}", sha)
     return f"""## Discovery: `{item['name']}` from GitHub code search
 
 **Expertise:** `{expertise}`
@@ -282,6 +308,8 @@ def _github_code_body(item: Dict, expertise: str, lang_tags: Set[str], platform_
 ---
 _This issue was automatically created by the [discover-skills workflow](.github/workflows/01-discover-skills.yml)._
 _Next step: Review this resource and label it `status/draft` to include it in the next compile run._
+
+{reg_comment}
 """
 
 
@@ -289,6 +317,10 @@ def _github_repo_body(item: Dict, expertise: str, lang_tags: Set[str], platform_
     topics = ", ".join(f"`{t}`" for t in item.get("topics", []))
     lang_section = f"\n**Languages:** {', '.join(f'`{t}`' for t in sorted(lang_tags))}" if lang_tags else ""
     plat_section = f"\n**Platforms:** {', '.join(f'`{t}`' for t in sorted(platform_tags))}" if platform_tags else ""
+    # Use pushed_at as the content signal (not stars)
+    pushed_at = item.get("pushed_at", "")
+    sha = content_sha(f"{item['repo']}:pushed_at={pushed_at}")
+    reg_comment = _registry_key_comment("github-repos", item["repo"], item["repo"], sha)
     return f"""## Discovery: `{item['name']}` repository
 
 **Expertise:** `{expertise}`
@@ -304,12 +336,17 @@ def _github_repo_body(item: Dict, expertise: str, lang_tags: Set[str], platform_
 ---
 _This issue was automatically created by the [discover-skills workflow](.github/workflows/01-discover-skills.yml)._
 _Next step: Review this resource and label it `status/draft` to include it in the next compile run._
+
+{reg_comment}
 """
 
 
 def _awesome_body(item: Dict, expertise: str, lang_tags: Set[str], platform_tags: Set[str]) -> str:
     lang_section = f"\n**Languages:** {', '.join(f'`{t}`' for t in sorted(lang_tags))}" if lang_tags else ""
     plat_section = f"\n**Platforms:** {', '.join(f'`{t}`' for t in sorted(platform_tags))}" if platform_tags else ""
+    raw = item.get("raw_content", item.get("name", ""))
+    sha = content_sha(raw)
+    reg_comment = _registry_key_comment("awesome-copilot", "github/awesome-copilot", raw[:80], sha)
     return f"""## Discovery: awesome-copilot entry
 
 **Expertise:** `{expertise}`
@@ -317,11 +354,13 @@ def _awesome_body(item: Dict, expertise: str, lang_tags: Set[str], platform_tags
 
 ### Matched line
 ```
-{item.get('raw_content', '')}
+{raw}
 ```
 
 ---
 _This issue was automatically created by the [discover-skills workflow](.github/workflows/01-discover-skills.yml)._
+
+{reg_comment}
 """
 
 
@@ -374,18 +413,19 @@ def discover(expertise: str, dry_run: bool, lang_tags: Set[str], platform_tags: 
     print(f"  Found {len(items)} code results")
     for item in items:
         skill_ref = f"{item['repo']}/{item['path']}"
-        sha = content_sha(item.get("url", skill_ref))
+        # Use git blob SHA from GitHub API — reflects actual file content
+        sha = item.get("sha") or content_sha(item.get("url", skill_ref))
         if not registry.needs_evaluation("github-search", item["repo"], skill_ref, sha):
             print(f"  [skip] Already evaluated (unchanged): {skill_ref[:80]}")
             total_skipped += 1
             continue
         title = f"[discovery] {expertise}: SKILL.md in {item['repo']}/{item['path']}"
         body = _github_code_body(item, expertise, lang_tags, platform_tags)
-        labels = base_labels + ["type/skill"] + filter_labels
+        # Include source label so evaluate.py can find the same registry entry
+        labels = base_labels + ["type/skill", "source/github-search"] + filter_labels
         n = create_issue(title, body, labels, dry_run)
         if n:
             total_created += 1
-            # Record as pending evaluation (no score yet)
             registry.mark_evaluated(
                 source="github-search",
                 plugin_ref=item["repo"],
@@ -407,14 +447,17 @@ def discover(expertise: str, dry_run: bool, lang_tags: Set[str], platform_tags: 
     print(f"  Found {len(repos)} repositories")
     for item in repos:
         skill_ref = item["repo"]
-        sha = content_sha(f"{skill_ref}:stars={item.get('stars', 0)}")
+        # Use pushed_at as the content signal — reflects actual repo changes
+        pushed_at = item.get("pushed_at", "")
+        sha = content_sha(f"{skill_ref}:pushed_at={pushed_at}")
         if not registry.needs_evaluation("github-repos", item["repo"], skill_ref, sha):
             print(f"  [skip] Already evaluated (unchanged): {skill_ref[:80]}")
             total_skipped += 1
             continue
         title = f"[discovery] {expertise}: plugin repo {item['repo']}"
         body = _github_repo_body(item, expertise, lang_tags, platform_tags)
-        labels = base_labels + ["type/plugin"] + filter_labels
+        # Include source label so evaluate.py can find the same registry entry
+        labels = base_labels + ["type/plugin", "source/github-repos"] + filter_labels
         n = create_issue(title, body, labels, dry_run)
         if n:
             total_created += 1

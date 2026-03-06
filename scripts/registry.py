@@ -66,7 +66,12 @@ _REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "..", "sources", "skill
 
 
 class Registry:
-    """Thread-safe (single-process) skill evaluation registry."""
+    """Skill evaluation registry (single-writer, not thread-safe).
+
+    Uses an atomic file-replace on save (write to ``*.tmp`` then ``os.replace``)
+    which is safe for a single concurrent writer. Do not use from multiple
+    threads or overlapping processes without external file-locking.
+    """
 
     def __init__(self, path: str = _REGISTRY_PATH) -> None:
         self.path = os.path.realpath(path)

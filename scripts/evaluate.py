@@ -14,12 +14,13 @@ Environment variables:
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(__file__))
 from registry import Registry, content_sha, extract_platform_tags_from_labels  # noqa: E402
@@ -30,6 +31,35 @@ GITHUB_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "LederWorks/veiled-marke
 GITHUB_API = "https://api.github.com"
 MODELS_API = "https://models.inference.ai.azure.com"
 DEFAULT_MODEL = "gpt-4o-mini"
+
+
+# ---------------------------------------------------------------------------
+# Registry key parsing
+# ---------------------------------------------------------------------------
+
+_REGISTRY_KEY_RE = re.compile(r"<!--\s*veiled-market-registry:(\{.*?\})\s*-->", re.DOTALL)
+
+
+def _parse_registry_key(issue_body: str) -> Optional[Tuple[str, str, str, str]]:
+    """Extract the embedded registry key from an issue body.
+
+    Returns ``(source, plugin_ref, skill_ref, sha)`` or ``None`` if no key is found.
+    The key is embedded by ``discover.py`` as an HTML comment:
+    ``<!-- veiled-market-registry:{"source":...} -->``.
+    """
+    m = _REGISTRY_KEY_RE.search(issue_body)
+    if not m:
+        return None
+    try:
+        key = json.loads(m.group(1))
+        return (
+            key.get("source", ""),
+            key.get("plugin_ref", ""),
+            key.get("skill_ref", ""),
+            key.get("sha", ""),
+        )
+    except (json.JSONDecodeError, AttributeError):
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -281,8 +311,8 @@ def update_issue_label(issue_number: int, old_label: str, new_label: str, dry_ru
     if dry_run:
         print(f"  [dry-run] Would relabel issue #{issue_number}: {old_label} → {new_label}")
         return
-    # Remove old label
-    url = f"{GITHUB_API}/repos/{GITHUB_REPOSITORY}/issues/{issue_number}/labels/{urllib.parse.quote(old_label)}"
+    # Remove old label (encode '/' so the path isn't treated as nested)
+    url = f"{GITHUB_API}/repos/{GITHUB_REPOSITORY}/issues/{issue_number}/labels/{urllib.parse.quote(old_label, safe='')}"
     req = urllib.request.Request(url, headers=_gh_headers(), method="DELETE")
     try:
         urllib.request.urlopen(req, timeout=10)
@@ -401,20 +431,28 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
     evaluated: List[Dict] = []
     skipped = 0
     for issue in issues:
-        # Build a stable skill_ref from the issue number (always unique per repo)
-        skill_ref = f"issue#{issue['number']}"
-        # Use a SHA of the issue body to detect content changes
-        body_sha = content_sha(issue.get("body", ""))
+        issue_body = issue.get("body", "")
 
-        # Determine source from labels (fallback to "github-issues")
-        source = "github-issues"
-        for lbl in issue.get("labels", []):
-            if lbl.startswith("source/"):
-                source = lbl.replace("source/", "", 1)
-                break
+        # Try to recover the exact registry key embedded by discover.py.
+        # This aligns discover→evaluate on the same (source, plugin_ref, skill_ref, sha)
+        # tuple so dedup works across both scripts.
+        embedded_key = _parse_registry_key(issue_body)
+        if embedded_key:
+            reg_source, reg_plugin_ref, reg_skill_ref, reg_sha = embedded_key
+        else:
+            # Fallback: derive source from issue labels; use issue-number as skill_ref
+            reg_source = "github-issues"
+            for lbl in issue.get("labels", []):
+                if lbl.startswith("source/"):
+                    reg_source = lbl.replace("source/", "", 1)
+                    break
+            reg_plugin_ref = expertise
+            reg_skill_ref = f"issue#{issue['number']}"
+            # SHA of the issue body detects content changes when no embedded key
+            reg_sha = content_sha(issue_body)
 
-        if not registry.needs_evaluation(source, expertise, skill_ref, body_sha):
-            cached = registry.get_entry(source, expertise, skill_ref)
+        if not registry.needs_evaluation(reg_source, reg_plugin_ref, reg_skill_ref, reg_sha):
+            cached = registry.get_entry(reg_source, reg_plugin_ref, reg_skill_ref)
             print(
                 f"  [skip] Issue #{issue['number']} already evaluated "
                 f"(sha unchanged, rec={cached.get('recommendation','?')}): "
@@ -428,7 +466,7 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
             continue
 
         print(f"  Scoring issue #{issue['number']}: {issue['title'][:60]}")
-        score = score_discovery_issue(issue["body"], expertise)
+        score = score_discovery_issue(issue_body, expertise)
         overall = (
             score.get("relevance", 5)
             + score.get("quality", 5)
@@ -440,16 +478,16 @@ def evaluate(expertise: str, dry_run: bool, output_dir: str) -> int:
         add_score_comment(issue["number"], score, dry_run)
         evaluated.append({**issue, "score": score})
 
-        # Update registry entry with score
+        # Update the registry entry using the exact same key as discover.py
         lang_tags = [lbl.replace("lang/", "") for lbl in issue.get("labels", []) if lbl.startswith("lang/")]
         platform_tags = extract_platform_tags_from_labels(
             [lbl for lbl in issue.get("labels", []) if lbl.startswith("platform/")]
         )
         registry.mark_evaluated(
-            source=source,
-            plugin_ref=expertise,
-            skill_ref=skill_ref,
-            sha=body_sha,
+            source=reg_source,
+            plugin_ref=reg_plugin_ref,
+            skill_ref=reg_skill_ref,
+            sha=reg_sha,
             expertise=expertise,
             score=score,
             recommendation=score.get("recommendation", "include"),
