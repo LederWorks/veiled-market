@@ -177,6 +177,140 @@ def fetch_awesome_copilot(expertise: str) -> List[Dict]:
     return results[:10]
 
 
+def fetch_github_marketplace_source(source: Dict, expertise: str) -> List[Dict]:
+    """Fetch entries from a github-marketplace source by scanning its repo README."""
+    import base64
+    repo = source.get("repo", "")
+    if not repo:
+        return []
+    url = f"{GITHUB_API}/repos/{repo}/readme"
+    data = _get(url)
+    if not data:
+        return []
+    try:
+        content = base64.b64decode(data.get("content", "")).decode(errors="replace")
+    except (ValueError, UnicodeDecodeError):
+        return []
+    results = []
+    for line in content.splitlines():
+        if expertise.lower() in line.lower():
+            results.append({
+                "source": source["id"],
+                "name": line.strip()[:120],
+                "url": f"https://github.com/{repo}",
+                "description": line.strip()[:500],
+                "raw_content": line.strip(),
+            })
+    return results[:10]
+
+
+def fetch_github_source(source: Dict, expertise: str) -> List[Dict]:
+    """Fetch SKILL.md files from a github-type source via repo-scoped code search."""
+    repo = source.get("repo", "")
+    if not repo:
+        return []
+    encoded = urllib.parse.quote(f"{expertise} filename:SKILL.md repo:{repo}")
+    url = f"{GITHUB_API}/search/code?q={encoded}&per_page=20"
+    data = _get(url)
+    if not data or "items" not in data:
+        return []
+    results = []
+    for item in data.get("items", []):
+        results.append({
+            "source": source["id"],
+            "name": item.get("name", ""),
+            "repo": item.get("repository", {}).get("full_name", repo),
+            "path": item.get("path", ""),
+            "url": item.get("html_url", ""),
+            "description": item.get("repository", {}).get("description") or "",
+            "raw_url": item.get("download_url") or item.get("html_url", ""),
+            "sha": item.get("sha", ""),
+            "raw_content": item.get("path", ""),
+        })
+    time.sleep(1)
+    return results
+
+
+def fetch_web_source(source: Dict, expertise: str) -> List[Dict]:
+    """Fetch results from a web-type source using its search_url.
+
+    Tries JSON response first, then falls back to HTML anchor scanning.
+    """
+    import re
+    search_url = source.get("search_url", "").replace("{expertise}", urllib.parse.quote(expertise))
+    if not search_url:
+        return []
+    req = urllib.request.Request(
+        search_url,
+        headers={
+            "User-Agent": "veiled-market-discover/1.0",
+            "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content_type = resp.headers.get("Content-Type", "")
+            raw = resp.read().decode(errors="replace")
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as exc:
+        print(f"  [warn] GET {search_url} → {exc}", file=sys.stderr)
+        return []
+
+    # Try JSON first
+    if "application/json" in content_type:
+        try:
+            data = json.loads(raw)
+            candidates = data if isinstance(data, list) else (
+                data.get("results") or data.get("items") or
+                data.get("skills") or data.get("plugins") or []
+            )
+            results = []
+            for item in (candidates or [])[:20]:
+                if not isinstance(item, dict):
+                    continue
+                name = item.get("name") or item.get("title") or ""
+                if expertise.lower() not in name.lower() and expertise.lower() not in str(item).lower():
+                    continue
+                results.append({
+                    "source": source["id"],
+                    "name": name[:120],
+                    "url": item.get("url") or item.get("href") or item.get("link") or search_url,
+                    "description": (item.get("description") or item.get("summary") or "")[:500],
+                    "raw_content": name or str(item)[:200],
+                })
+            return results
+        except json.JSONDecodeError:
+            pass
+
+    # HTML: scan anchor tags for expertise-relevant links
+    results = []
+    seen: set = set()
+    parsed_base = urllib.parse.urlparse(source.get("url", search_url))
+    for m in re.finditer(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', raw, re.IGNORECASE | re.DOTALL):
+        href = m.group(1).strip()
+        text = re.sub(r"<[^>]+>", "", m.group(2)).strip()[:120]
+        if not text or len(text) < 3:
+            continue
+        if expertise.lower() not in text.lower() and expertise.lower() not in href.lower():
+            continue
+        if href in seen or href.startswith("#") or href.startswith("javascript") or href.startswith("mailto"):
+            continue
+        seen.add(href)
+        if href.startswith("/"):
+            href = f"{parsed_base.scheme}://{parsed_base.netloc}{href}"
+        elif not href.startswith("http"):
+            continue
+        results.append({
+            "source": source["id"],
+            "name": text,
+            "url": href,
+            "description": text,
+            "raw_content": text,
+        })
+        if len(results) >= 15:
+            break
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Issue management
 # ---------------------------------------------------------------------------
@@ -201,13 +335,19 @@ def ensure_labels(
         {"name": "ai/discovery", "color": "c5def5", "description": "Created by the AI discovery workflow"},
         {"name": "ai/draft", "color": "bfdadc", "description": "Created by the AI draft workflow"},
         {"name": "ai/evaluation", "color": "d4c5f9", "description": "Created by the AI evaluation workflow"},
-        # Source labels used by the discovery script
-        {"name": "source/github-search", "color": "24292e", "description": "Sourced from GitHub code search"},
-        {"name": "source/github-repos", "color": "24292e", "description": "Sourced from GitHub repository search"},
-        {"name": "source/awesome-copilot", "color": "0075ca", "description": "Sourced from github/awesome-copilot"},
     ]
 
-    # Add lang labels for the requested tags
+    # Add source labels for all entries in marketplaces.json
+    source_color = "24292e"
+    for src in load_sources():
+        src_id = src.get("id", "")
+        src_name = src.get("name", src_id)
+        if src_id:
+            base_labels.append({
+                "name": f"source/{src_id}",
+                "color": source_color,
+                "description": f"Sourced from {src_name}",
+            })
     lang_color = "28a745"
     for tag in sorted(lang_tags):
         base_labels.append({
@@ -364,6 +504,33 @@ _This issue was automatically created by the [discover-skills workflow](.github/
 """
 
 
+def _web_source_body(item: Dict, expertise: str, source: Dict, lang_tags: Set[str], platform_tags: Set[str]) -> str:
+    lang_section = f"\n**Languages:** {', '.join(f'`{t}`' for t in sorted(lang_tags))}" if lang_tags else ""
+    plat_section = f"\n**Platforms:** {', '.join(f'`{t}`' for t in sorted(platform_tags))}" if platform_tags else ""
+    src_id = source.get("id", "")
+    src_name = source.get("name", src_id)
+    src_url = source.get("url", "")
+    raw = item.get("raw_content", item.get("name", item.get("url", "")))
+    sha = content_sha(raw)
+    skill_ref = item.get("url", raw[:80]) or raw[:80]
+    reg_comment = _registry_key_comment(src_id, src_id, skill_ref, sha)
+    return f"""## Discovery: `{item.get('name', '')}` from {src_name}
+
+**Expertise:** `{expertise}`
+**Source:** [{src_name}]({src_url})
+**URL:** {item.get('url', '_N/A_')}{lang_section}{plat_section}
+
+### Description
+{item.get('description') or '_No description available._'}
+
+---
+_This issue was automatically created by the [discover-skills workflow](.github/workflows/01-discover-skills.yml)._
+_Next step: Review this resource and label it `status/draft` to include it in the next compile run._
+
+{reg_comment}
+"""
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -509,12 +676,59 @@ def discover(expertise: str, dry_run: bool, lang_tags: Set[str], platform_tags: 
         time.sleep(0.5)
     print()
 
+    # --- Sources from marketplaces.json (excluding already-handled ones) ---
+    # github-search and github-repos are handled by the hardcoded sections above.
+    # awesome-copilot is also handled above.
+    _HANDLED_SOURCE_IDS = {"github-search", "github-repos", "awesome-copilot"}
+    for src in load_sources():
+        src_id = src.get("id", "")
+        src_type = src.get("type", "web")
+        if src_id in _HANDLED_SOURCE_IDS:
+            continue
+        print(f"=== {src.get('name', src_id)} ===")
+        if src_type == "github-marketplace":
+            src_items = fetch_github_marketplace_source(src, expertise)
+        elif src_type == "github":
+            src_items = fetch_github_source(src, expertise)
+        elif src_type == "web":
+            src_items = fetch_web_source(src, expertise)
+        else:
+            print(f"  [skip] Unhandled source type: {src_type}")
+            continue
+        print(f"  Found {len(src_items)} results")
+        for item in src_items:
+            raw = item.get("raw_content", item.get("name", item.get("url", "")))
+            sha = content_sha(raw)
+            skill_ref = item.get("url", raw[:80]) or raw[:80]
+            if not registry.needs_evaluation(src_id, src_id, skill_ref, sha):
+                print(f"  [skip] Already evaluated (unchanged): {skill_ref[:60]}")
+                total_skipped += 1
+                continue
+            title = f"[discovery] {expertise}: {src.get('name', src_id)} — {item.get('name', '')[:60]}"
+            body = _web_source_body(item, expertise, src, lang_tags, platform_tags)
+            labels = base_labels + ["type/skill", f"source/{src_id}"] + filter_labels
+            n = create_issue(title, body, labels, dry_run)
+            if n:
+                total_created += 1
+                registry.mark_evaluated(
+                    source=src_id,
+                    plugin_ref=src_id,
+                    skill_ref=skill_ref,
+                    sha=sha,
+                    expertise=expertise,
+                    recommendation="pending",
+                    lang_tags=list(lang_tags),
+                    platform_tags=list(platform_tags),
+                    issue_number=n,
+                    notes=f"Discovered from {src.get('name', src_id)}; awaiting AI evaluation.",
+                )
+            time.sleep(0.5)
+        print()
+
     # Persist updated registry
     if not dry_run and (total_created > 0):
         registry.save()
         print("[discover] Registry updated.")
-
-    print(f"[discover] Done. Issues created: {total_created}  Skipped (already evaluated): {total_skipped}")
     return 0
 
 
