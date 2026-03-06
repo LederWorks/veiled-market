@@ -106,6 +106,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODELS_TOKEN: ${{ secrets.MODELS_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PLUGINS:     ${{ steps.resolve.outputs.plugins }}
           DRY_RUN:     ${{ inputs.dry_run || 'false' }}

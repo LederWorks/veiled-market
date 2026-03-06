@@ -8,7 +8,9 @@ Usage:
   python3 scripts/enrich.py
 
 Environment variables:
-  GITHUB_TOKEN   For GitHub Models API
+  GITHUB_TOKEN   For GitHub REST API
+  MODELS_TOKEN   For GitHub Models API (PAT with `models` permission).
+                 Falls back to GITHUB_TOKEN if not set.
   plugin      The plugin name (e.g. terraformer)
 """
 
@@ -19,6 +21,7 @@ import urllib.error
 import urllib.request
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+MODELS_TOKEN = os.environ.get("MODELS_TOKEN") or GITHUB_TOKEN
 plugin = os.environ.get("plugin", "")
 MODELS_API = "https://models.inference.ai.azure.com"
 DRAFT_DIR = "/tmp/all-drafts"
@@ -40,7 +43,7 @@ def ai_complete(system: str, user: str) -> str:
         f"{MODELS_API}/chat/completions",
         data=data,
         headers={
-            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Authorization": f"Bearer {MODELS_TOKEN}",
             "Content-Type": "application/json",
             "User-Agent": "veiled-market/1.0",
         },

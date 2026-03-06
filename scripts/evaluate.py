@@ -7,7 +7,9 @@ Usage:
   python3 scripts/evaluate.py --plugin terraformer [--dry-run] [--output drafts/terraformer]
 
 Environment variables:
-  GITHUB_TOKEN        Required for GitHub API and GitHub Models API
+  GITHUB_TOKEN        Required for GitHub REST API and gh CLI
+  MODELS_TOKEN        Required for GitHub Models API (PAT with `models` permission).
+                      Falls back to GITHUB_TOKEN if not set (works for user PATs, not App tokens).
   GITHUB_REPOSITORY   Owner/repo (e.g. LederWorks/veiled-market)
 """
 
@@ -27,6 +29,9 @@ from registry import Registry, content_sha, extract_platform_tags_from_labels  #
 
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+# GitHub Models API requires a PAT with the `models` permission.
+# GitHub App installation tokens (GITHUB_TOKEN in Actions) do NOT have this permission.
+MODELS_TOKEN = os.environ.get("MODELS_TOKEN") or GITHUB_TOKEN
 GITHUB_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "LederWorks/veiled-market")
 GITHUB_API = "https://api.github.com"
 MODELS_API = "https://models.inference.ai.azure.com"
@@ -113,7 +118,7 @@ def ai_complete(system: str, user: str, model: str = DEFAULT_MODEL) -> str:
     """Call GitHub Models chat completion. Returns the assistant message text."""
     url = f"{MODELS_API}/chat/completions"
     headers = {
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Authorization": f"Bearer {MODELS_TOKEN}",
         "Content-Type": "application/json",
         "User-Agent": "veiled-market-evaluate/1.0",
     }

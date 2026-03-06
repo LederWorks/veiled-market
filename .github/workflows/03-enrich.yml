@@ -163,6 +163,7 @@ jobs:
         id: enrich
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODELS_TOKEN: ${{ secrets.MODELS_TOKEN }}
           PLUGINS: ${{ steps.resolve.outputs.plugins }}
         run: |
           python3 - <<'EOF'
