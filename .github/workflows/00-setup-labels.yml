@@ -49,6 +49,7 @@ jobs:
           create_label "type/hook"          "e11d48" "Hook component"
           create_label "type/plugin"        "6e40c9" "Complete plugin"
           create_label "type/mcp"           "1d76db" "MCP server configuration"
+          create_label "type/instruction"   "5319e7" "Instruction / prompt file"
 
           # AI workflow labels
           create_label "ai/discovery"       "c5def5" "Created by the AI discovery workflow"
