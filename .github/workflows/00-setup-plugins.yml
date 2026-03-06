@@ -303,6 +303,9 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.read-plugins.outputs.plugin_matrix) }}
       fail-fast: false
+    permissions:
+      contents: read
+      issues: write
     uses: ./.github/workflows/00-setup-labels.yml
     with:
       plugin:        ${{ matrix.name }}
