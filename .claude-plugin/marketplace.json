@@ -1,0 +1,29 @@
+{
+  "name": "veiled-market",
+  "owner": {
+    "name": "LederWorks",
+    "url": "https://github.com/LederWorks"
+  },
+  "metadata": {
+    "description": "Veiled Market — AI-curated plugin marketplace for GitHub Copilot CLI and Claude Code. Expertises are auto-discovered from top skill registries and refined by AI workflows.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "terraformer",
+      "description": "Comprehensive Terraform and OpenTofu workflow automation: plan, apply, validate, format, state management, imports, and workspace handling across AWS, Azure, and GCP.",
+      "version": "0.1.0",
+      "source": "plugins/terraformer",
+      "author": {
+        "name": "veiled-market contributors",
+        "url": "https://github.com/LederWorks/veiled-market"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/terraformer",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["terraform", "opentofu", "iac", "infrastructure", "devops", "cloud"],
+      "category": "infrastructure",
+      "tags": ["terraform", "opentofu", "aws", "azure", "gcp", "iac", "devsecops"]
+    }
+  ]
+}

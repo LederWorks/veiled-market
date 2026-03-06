@@ -1,0 +1,6 @@
+{
+  "_schema_version": "1",
+  "_description": "Tracks every evaluated skill/plugin resource by source marketplace, plugin reference, and skill URL. Used to avoid redundant re-evaluation of unchanged content. SHA is the content hash (git blob SHA or SHA-256 of raw content).",
+  "_hierarchy": "marketplaces[source_id][plugin_ref][skill_ref]",
+  "marketplaces": {}
+}

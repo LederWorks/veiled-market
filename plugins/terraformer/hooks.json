@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'if printf \"%s\\n\" \"$TOOL_INPUT\" | grep -qE \"terraform (apply|destroy)\"; then echo \"[terraformer] Reminder: always review the plan output before confirming apply/destroy.\"; fi'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'if printf \"%s\\n\" \"$TOOL_INPUT\" | grep -qE \"terraform (apply|destroy)\"; then echo \"[terraformer] Operation complete. Run: terraform state list to verify current state.\"; fi'"
+          }
+        ]
+      }
+    ]
+  }
+}
