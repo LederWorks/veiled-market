@@ -7,7 +7,6 @@
     "github-search": {
       "K-Dense-AI/claude-scientific-skills": {
         "K-Dense-AI/claude-scientific-skills/scientific-skills/geomaster/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 15,
           "lang_tags": [
             "hcl"
@@ -15,6 +14,7 @@
           "last_evaluated": "2026-03-06T05:30:40Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "34c58cd32e4b278f5cc4b4bc074ec3fcee4e4b7d"
@@ -22,7 +22,6 @@
       },
       "LongbowXXX/terraformer": {
         "LongbowXXX/terraformer/.github/skills/arc-create-custom-skill/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 21,
           "lang_tags": [
             "hcl"
@@ -30,6 +29,7 @@
           "last_evaluated": "2026-03-06T05:30:46Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "b2bbe156c2ae6d320d17fc6f912af1ae27fcc473"
@@ -37,7 +37,6 @@
       },
       "a5c-ai/babysitter": {
         "a5c-ai/babysitter/plugins/babysitter/skills/babysit/process/specializations/code-migration-modernization/skills/iac-generator/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 16,
           "lang_tags": [
             "hcl"
@@ -45,6 +44,7 @@
           "last_evaluated": "2026-03-06T05:30:41Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "ab46c5306e8ebcf24069f32c0d05e95259a77c21"
@@ -52,7 +52,6 @@
       },
       "diegosouzapw/awesome-omni-skill": {
         "diegosouzapw/awesome-omni-skill/skills/data-ai/create-custom-prompt/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 19,
           "lang_tags": [
             "hcl"
@@ -60,12 +59,12 @@
           "last_evaluated": "2026-03-06T05:30:44Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "474cf2bb6fc51e29d0741d9d44221eb7b62befa1"
         },
         "diegosouzapw/awesome-omni-skill/skills/devops/terraformer-majiayu000/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 14,
           "lang_tags": [
             "hcl"
@@ -73,12 +72,12 @@
           "last_evaluated": "2026-03-06T05:30:38Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "diegosouzapw/awesome-omni-skill/skills/devops/terraformer/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 12,
           "lang_tags": [
             "hcl"
@@ -86,6 +85,7 @@
           "last_evaluated": "2026-03-06T05:30:36Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
@@ -93,7 +93,6 @@
       },
       "harshahosur81/ag-opencode-skills": {
         "harshahosur81/ag-opencode-skills/skills/platform-engineer/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 18,
           "lang_tags": [
             "hcl"
@@ -101,6 +100,7 @@
           "last_evaluated": "2026-03-06T05:30:43Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "dc540cf63c3bf441643cdd203cc8973d6ac12388"
@@ -108,7 +108,6 @@
       },
       "jessecrouch/ogamex-go": {
         "jessecrouch/ogamex-go/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 17,
           "lang_tags": [
             "hcl"
@@ -116,6 +115,7 @@
           "last_evaluated": "2026-03-06T05:30:42Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "41b09e83c3c0e80bbf5a67f4870bbe80519141df"
@@ -123,7 +123,6 @@
       },
       "majiayu000/claude-skill-registry": {
         "majiayu000/claude-skill-registry/skills/data/platform-migration/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 20,
           "lang_tags": [
             "hcl"
@@ -131,12 +130,12 @@
           "last_evaluated": "2026-03-06T05:30:45Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "4231a6348c0022504bddb91696cbeb4ff9c03377"
         },
         "majiayu000/claude-skill-registry/skills/data/terraformer/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 2,
           "lang_tags": [
             "hcl"
@@ -144,12 +143,12 @@
           "last_evaluated": "2026-03-06T05:30:25Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry/skills/devops/terraformer-lobbi-docs-claude/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 6,
           "lang_tags": [
             "hcl"
@@ -157,12 +156,12 @@
           "last_evaluated": "2026-03-06T05:30:29Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry/skills/devops/terraformer/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 4,
           "lang_tags": [
             "hcl"
@@ -170,12 +169,12 @@
           "last_evaluated": "2026-03-06T05:30:27Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry/skills/other/terraformer-lobbi-docs-claude/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 5,
           "lang_tags": [
             "hcl"
@@ -183,12 +182,12 @@
           "last_evaluated": "2026-03-06T05:30:28Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry/skills/other/terraformer/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 3,
           "lang_tags": [
             "hcl"
@@ -196,6 +195,7 @@
           "last_evaluated": "2026-03-06T05:30:26Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
@@ -203,7 +203,6 @@
       },
       "majiayu000/claude-skill-registry-data": {
         "majiayu000/claude-skill-registry-data/data/terraformer/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 7,
           "lang_tags": [
             "hcl"
@@ -211,12 +210,12 @@
           "last_evaluated": "2026-03-06T05:30:31Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/devops/terraformer-lobbi-docs-claude/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 13,
           "lang_tags": [
             "hcl"
@@ -224,12 +223,12 @@
           "last_evaluated": "2026-03-06T05:30:37Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/devops/terraformer/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 9,
           "lang_tags": [
             "hcl"
@@ -237,12 +236,12 @@
           "last_evaluated": "2026-03-06T05:30:33Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/other/other/terraformer/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 10,
           "lang_tags": [
             "hcl"
@@ -250,12 +249,12 @@
           "last_evaluated": "2026-03-06T05:30:34Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/other/terraformer-lobbi-docs-claude/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 11,
           "lang_tags": [
             "hcl"
@@ -263,12 +262,12 @@
           "last_evaluated": "2026-03-06T05:30:35Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
         },
         "majiayu000/claude-skill-registry-data/other/terraformer/SKILL.md": {
-          "plugin": "terraformer",
           "issue_number": 8,
           "lang_tags": [
             "hcl"
@@ -276,6 +275,7 @@
           "last_evaluated": "2026-03-06T05:30:32Z",
           "notes": "Discovered; awaiting AI evaluation.",
           "platform_tags": [],
+          "plugin": "terraformer",
           "recommendation": "pending",
           "score": {},
           "sha": "061bda4b48396c38f9a1f9ec6af0876d59e5d6df"
