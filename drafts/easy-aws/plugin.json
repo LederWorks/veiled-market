@@ -1,0 +1,14 @@
+{
+  "name": "easy-aws",
+  "description": "Auto-generated easy-aws plugin (AI unavailable)",
+  "version": "0.1.0",
+  "keywords": [
+    "easy-aws"
+  ],
+  "category": "automation",
+  "tags": [
+    "easy-aws"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "easy-azuredevops",
+  "description": "Auto-generated easy-azuredevops plugin (AI unavailable)",
+  "version": "0.1.0",
+  "keywords": [
+    "easy-azuredevops"
+  ],
+  "category": "automation",
+  "tags": [
+    "easy-azuredevops"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}
