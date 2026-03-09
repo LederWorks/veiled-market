@@ -1,0 +1,14 @@
+{
+  "name": "easy-kubernetes",
+  "description": "Auto-generated easy-kubernetes plugin (AI unavailable)",
+  "version": "0.1.0",
+  "keywords": [
+    "easy-kubernetes"
+  ],
+  "category": "automation",
+  "tags": [
+    "easy-kubernetes"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}
