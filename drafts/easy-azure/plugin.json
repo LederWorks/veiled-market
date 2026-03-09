@@ -1,0 +1,14 @@
+{
+  "name": "easy-azure",
+  "description": "Auto-generated easy-azure plugin (AI unavailable)",
+  "version": "0.1.0",
+  "keywords": [
+    "easy-azure"
+  ],
+  "category": "automation",
+  "tags": [
+    "easy-azure"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}
