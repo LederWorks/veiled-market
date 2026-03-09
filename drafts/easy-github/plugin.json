@@ -1,0 +1,14 @@
+{
+  "name": "easy-github",
+  "description": "Auto-generated easy-github plugin (AI unavailable)",
+  "version": "0.1.0",
+  "keywords": [
+    "easy-github"
+  ],
+  "category": "automation",
+  "tags": [
+    "easy-github"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}
