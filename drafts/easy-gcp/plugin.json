@@ -1,0 +1,14 @@
+{
+  "name": "easy-gcp",
+  "description": "Auto-generated easy-gcp plugin (AI unavailable)",
+  "version": "0.1.0",
+  "keywords": [
+    "easy-gcp"
+  ],
+  "category": "automation",
+  "tags": [
+    "easy-gcp"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}
