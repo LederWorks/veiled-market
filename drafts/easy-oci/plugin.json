@@ -1,0 +1,14 @@
+{
+  "name": "easy-oci",
+  "description": "Auto-generated easy-oci plugin (AI unavailable)",
+  "version": "0.1.0",
+  "keywords": [
+    "easy-oci"
+  ],
+  "category": "automation",
+  "tags": [
+    "easy-oci"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}
