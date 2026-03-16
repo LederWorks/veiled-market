@@ -14558,6 +14558,18 @@
           "score": {},
           "sha": "056d4fe17e682fa3da36f8805ce0d8d2ccb8df76"
         },
+        "github/awesome-copilot/skills/cloud-design-patterns/SKILL.md": {
+          "issue_number": 7798,
+          "lang_tags": [],
+          "last_evaluated": "2026-03-16T08:03:40Z",
+          "notes": "Discovered from github/awesome-copilot (skills); awaiting evaluation.",
+          "platform_tags": [],
+          "plugin": "easy-aws",
+          "recommendation": "pending",
+          "resource_type": "skills",
+          "score": {},
+          "sha": "b9a17433b9bedf95947bfe6624ef0a4bfa053021"
+        },
         "github/awesome-copilot/skills/create-architectural-decision-record/SKILL.md": {
           "issue_number": 2402,
           "lang_tags": [],
