@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/plugin.base.schema.json",
+  "name": "socrates",
+  "version": "1.0.0",
+  "description": "Validates a plugin against marketplace-patterns rules using Socratic dialogue. Spawns a scanner, asks targeted questions, writes a structured TODO file and inline summary.",
+  "license": "MIT",
+  "author": {
+    "name": "Ledermayer"
+  },
+  "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/socrates",
+  "repository": "https://github.com/LederWorks/veiled-market",
+  "keywords": ["validation", "audit", "marketplace", "plugin", "quality"],
+  "category": "Security",
+  "categories": ["AI Agents", "Coding"],
+  "tags": ["devtools", "quality", "validation", "audit"],
+  "agents": "agents/",
+  "skills": "skills/",
+  "commands": "commands/",
+  "hooks": "hooks.json"
+}

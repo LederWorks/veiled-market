@@ -1,0 +1,100 @@
+{#
+  Template: Terraform Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/terraform.yaml.j2
+#}
+languages:
+  terraform:
+    file_associations:
+      "*.tf": "terraform"
+      "*.tfvars": "terraform-vars"
+      "*.hcl": "terraform"
+
+    settings:
+      "[terraform]":
+        editor.formatOnSave: true
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.defaultFormatter: "hashicorp.terraform"
+
+      "[terraform-vars]":
+        editor.formatOnSave: true
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.defaultFormatter: "hashicorp.terraform"
+
+      terraform.languageServer.enable: true
+      terraform.validation.enableEnhancedValidation: true
+
+    required_extensions:
+      - "hashicorp.terraform"
+
+    recommended_extensions:
+      - "ms-azuretools.vscode-azureterraform"
+      - "ms-vscode.azure-account"
+
+    tasks:
+      - label: "Terraform: Init"
+        type: "shell"
+        command: "terraform"
+        args: ["init"]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Terraform: Plan"
+        type: "shell"
+        command: "terraform"
+        args: ["plan"]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Terraform: Apply"
+        type: "shell"
+        command: "terraform"
+        args: ["apply", "-auto-approve"]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Terraform: Validate"
+        type: "shell"
+        command: "terraform"
+        args: ["validate"]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Terraform: Format"
+        type: "shell"
+        command: "terraform"
+        args: ["fmt", "-recursive"]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Terraform: Destroy"
+        type: "shell"
+        command: "terraform"
+        args: ["destroy"]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+    linting:
+      enabled: true
+      tools:
+        - "terraform validate"
+        - "tflint"
+        - "tfsec"
+      config_files:
+        - ".tflint.hcl"
+
+    package_management:
+      tool: "terraform init"
+      config_files:
+        - ".terraform.lock.hcl"
+        - "versions.tf"

@@ -1,0 +1,43 @@
+{
+  "name": "daedalus",
+  "version": "1.0.0",
+  "description": "Plugin craftsman for veiled-market. Creates, updates, builds, and remediates dual-platform marketplace plugins via the commons/ build system.",
+  "author": {
+    "name": "veiled-market contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "plugin",
+    "scaffold",
+    "build",
+    "devtools"
+  ],
+  "tags": [
+    "devtools",
+    "marketplace"
+  ],
+  "skills": [
+    {
+      "path": "skills/create",
+      "user-invocable": false
+    },
+    {
+      "path": "skills/update",
+      "user-invocable": false
+    },
+    {
+      "path": "skills/build",
+      "user-invocable": false
+    },
+    {
+      "path": "skills/remediate",
+      "user-invocable": false
+    }
+  ],
+  "agents": [
+    {
+      "path": "agents/scaffolder.md"
+    }
+  ],
+  "hooks": "hooks.json"
+}

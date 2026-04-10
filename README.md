@@ -3,10 +3,6 @@
 > **The market behind the curtain** — an AI-curated plugin marketplace for [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating) and [Claude Code](https://code.claude.com/docs/en/plugins).
 
 [![00 · Setup](https://github.com/LederWorks/veiled-market/actions/workflows/00-setup-plugins.yml/badge.svg)](https://github.com/LederWorks/veiled-market/actions/workflows/00-setup-plugins.yml)
-[![01 · Discovery](https://github.com/LederWorks/veiled-market/actions/workflows/01-discovery.yml/badge.svg)](https://github.com/LederWorks/veiled-market/actions/workflows/01-discovery.yml)
-[![02 · Evaluate](https://github.com/LederWorks/veiled-market/actions/workflows/02-evaluate.yml/badge.svg)](https://github.com/LederWorks/veiled-market/actions/workflows/02-evaluate.yml)
-[![03 · Enrich](https://github.com/LederWorks/veiled-market/actions/workflows/03-enrich.yml/badge.svg)](https://github.com/LederWorks/veiled-market/actions/workflows/03-enrich.yml)
-[![04 · Finalize Plugin](https://github.com/LederWorks/veiled-market/actions/workflows/04-finalize-plugin.yml/badge.svg)](https://github.com/LederWorks/veiled-market/actions/workflows/04-finalize-plugin.yml)
 
 ---
 
@@ -18,7 +14,6 @@ veiled-market automatically discovers, evaluates, and packages skills, agents, a
 
 | Feature | Description |
 |---------|-------------|
-| 🔍 **Automated discovery** | GitHub Actions workflows query 14+ skill marketplaces and registries |
 | 🤖 **AI evaluation** | GitHub Models (GPT-4o) scores each discovered resource for relevance, quality, and platform fit |
 | 📦 **Dual-compatible plugins** | Every plugin works with both Copilot CLI and Claude Code via shared `plugin.json` / `.claude-plugin/` format |
 | 🔄 **Lifecycle management** | Issues → drafts → evaluation → enrichment → finalization, all tracked via GitHub Issues and PRs |
@@ -89,12 +84,9 @@ veiled-market/
 │   ├── plugin/
 │   │   └── marketplace.json        # Copilot CLI marketplace manifest
 │   ├── workflows/
-│   │   ├── 00-setup-plugins.yml    # Validate schemas, create Projects + labels
-│   │   ├── 00-setup-labels.yml     # Reusable: create GitHub labels
-│   │   ├── 01-discovery.yml        # Discover resources; auto-label status/draft
-│   │   ├── 02-evaluate.yml         # Score issues; synthesise draft plugin
-│   │   ├── 03-enrich.yml           # AI-enrich; open candidate PR
-│   │   └── 04-finalize-plugin.yml  # Promote candidate to plugins/
+│   │   ├── ci.yml                  # Schema validation
+│   │   ├── 06-build-platforms.yml  # Commons build: generate claude/ + copilot/
+│   │   └── dev/                    # 7 archived discovery workflows (shelved)
 │   └── ISSUE_TEMPLATE/
 │       ├── skill-discovery.yml     # Issue template for discoveries
 │       └── plugin-proposal.yml     # Issue template for proposals
@@ -126,74 +118,8 @@ veiled-market/
 
 ---
 
-## 🔄 Automated workflow lifecycle
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  PIPELINE: Stage 0 → Stage 1 → Stage 2 → Stage 3 → Stage 4         │
-│                                                                     │
-│  0. SETUP (00-setup-plugins.yml)                                    │
-│     ├─ Triggered by: push to sources/plugins.json or               │
-│     │                sources/marketplaces.json                      │
-│     ├─ Validates schemas; aborts fast on errors                     │
-│     ├─ Creates veiled-market-{plugin} GitHub Projects               │
-│     │  (cloned from template project #12)                           │
-│     └─ Ensures all required labels exist per plugin                 │
-│                                                                     │
-│  1. DISCOVER & DRAFT (01-discovery.yml)                             │
-│     ├─ Runs sequentially per plugin                                 │
-│     ├─ Query 8+ skill marketplaces via GitHub Trees API             │
-│     ├─ Create GitHub Issues for each discovery                      │
-│     └─ Auto-label: plugin/{name} + status/draft + source/{src}     │
-│                                                                     │
-│  2. EVALUATE (02-evaluate.yml)                                      │
-│     ├─ Triggered by: issue labeled status/draft                     │
-│     ├─ Scores status/draft issues with evaluate.py                  │
-│     ├─ Synthesises draft plugin into drafts/{plugin}/               │
-│     └─ Opens a draft PR labeled status/draft + ai/draft             │
-│                                                                     │
-│  3. ENRICH (03-enrich.yml)                                          │
-│     ├─ Triggered by: draft PR opened                                │
-│     ├─ GitHub Models scores resources; writes scores [skip ci]      │
-│     ├─ Picks best draft; merges unique features from others         │
-│     └─ Opens a single candidate PR per plugin                       │
-│                                                                     │
-│  4. FINALIZE (04-finalize-plugin.yml)                               │
-│     ├─ Triggered by: candidate PR merged to main                    │
-│     ├─ Promotes drafts/{plugin}/ → plugins/{plugin}/                │
-│     ├─ Regenerates both marketplace.json manifests                  │
-│     └─ Opens a release PR → merges to main                         │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Trigger a discovery run
-
-```bash
-# Via GitHub CLI
-gh workflow run 01-discovery.yml -f plugin=terraformer
-
-# Or visit:
-# https://github.com/LederWorks/veiled-market/actions/workflows/01-discovery.yml
-```
-
-### Scheduled discovery
-
-The discovery workflow runs automatically **every Monday at 06:00 UTC**. Add additional plugins in `sources/plugins.json` and additional scheduled runs in `.github/workflows/01-discovery.yml` as the marketplace grows.
-
----
-
-## 🌐 Queried sources
-
-| Source | Type | Platform |
-|--------|------|----------|
-| [github/copilot-plugins](https://github.com/github/copilot-plugins) | GitHub marketplace | Copilot CLI |
-| [github/awesome-copilot](https://github.com/github/awesome-copilot) | GitHub list | Copilot CLI |
-| [anthropics/claude-code](https://github.com/anthropics/claude-code) | Official plugins | Claude Code |
-| [anthropics/skills](https://github.com/anthropics/skills) | Official skills | Claude Code |
-| [antigravityskills.org](https://antigravityskills.org) | Curated list | Claude, Gemini, Cursor, Copilot |
-| [buildwithclaude.com](https://buildwithclaude.com) | Claude plugins | Claude Code |
-| [clawhub.ai](https://clawhub.ai) | Skill hub | Claude Code |
-| [openclawskill.ai](https://openclawskill.ai) | Prompts + skills | Claude Code |
+> **AI Discovery Pipeline:** This workflow is currently shelved. See [docs/DISCOVERY.md](docs/DISCOVERY.md) for full documentation.
 
 ---
 

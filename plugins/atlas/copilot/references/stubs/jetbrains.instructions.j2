@@ -1,0 +1,97 @@
+{#
+  Template: Jetbrains instruction stub
+  Output:   .github/instructions/jetbrains.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: ".idea/**/*"
+---
+
+# JetBrains IDE Configuration Standards
+
+Apply these conventions when creating or modifying JetBrains IDE configuration files (IntelliJ IDEA, WebStorm, GoLand, PyCharm, Rider).
+
+## What to Commit
+
+Commit shared project configuration under `.idea/`. Exclude personal settings:
+
+**Commit these files:**
+
+- `.idea/codeStyles/` — shared code style settings
+- `.idea/inspectionProfiles/` — shared inspection profiles
+- `.idea/runConfigurations/` — shared run/debug configurations
+- `.idea/vcs.xml` — VCS integration settings
+- `.idea/externalDependencies.xml` — required plugins list
+- `.idea/*.iml` module files (for non-Gradle/Maven projects)
+
+**Add to `.gitignore`:**
+
+```gitignore
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries/
+.idea/shelf/
+.idea/httpRequests/
+.idea/.name
+*.iws
+```
+
+## Code Style Settings
+
+Define project-level code style in `.idea/codeStyles/Project.xml`. Set the formatter to follow language-standard conventions:
+
+- **Go**: `gofmt` / `goimports` defaults — no custom overrides needed
+- **Python**: PEP 8 with 4-space indentation, 120-character line length
+- **TypeScript/JavaScript**: Prettier-compatible formatting — 2-space indentation, single quotes, trailing commas
+- **Java/Kotlin**: Google Java Style or Kotlin Coding Conventions
+
+Enable "Reformat code on save" in the project code style settings to match `editor.formatOnSave` in VS Code.
+
+## Run Configurations
+
+Store shared run configurations in `.idea/runConfigurations/` using descriptive XML filenames:
+
+```xml
+<!-- .idea/runConfigurations/Run_Server.xml -->
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run Server" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="myproject" />
+    <working_directory value="$PROJECT_DIR$" />
+    <kind value="DIRECTORY" />
+    <directory value="$PROJECT_DIR$/cmd/server" />
+    <envs>
+      <env name="ENV" value="development" />
+    </envs>
+  </configuration>
+</component>
+```
+
+Provide configurations for:
+
+- Main application entry point
+- Test suite (all tests)
+- Linter / code quality check
+
+## Inspection Profiles
+
+Use a project-level inspection profile rather than the IDE default. Store in `.idea/inspectionProfiles/Project_Default.xml`. Disable noisy or irrelevant inspections per project — keep the signal-to-noise ratio high.
+
+## External Dependencies (Required Plugins)
+
+List plugins the team needs in `.idea/externalDependencies.xml`:
+
+```xml
+<project version="4">
+  <component name="ExternalDependencies">
+    <plugin id="org.jetbrains.plugins.go" />
+    <plugin id="HashiCorp.HCLLanguageSupport" />
+  </component>
+</project>
+```
+
+JetBrains IDEs prompt teammates to install missing plugins on project open.
+
+## Database and HTTP Client
+
+Store shared database connection configs in `.idea/dataSources.xml` (without credentials). Use the built-in HTTP client with `.http` files under a `http/` directory for API testing — these are version-controllable alternatives to Postman collections.

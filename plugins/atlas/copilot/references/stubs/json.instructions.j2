@@ -1,0 +1,204 @@
+{#
+  Template: Json instruction stub
+  Output:   .github/instructions/json.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*.json,**/*.jsonc,**/*.json5"
+---
+
+# JSON Development Standards
+
+Apply these conventions when generating or modifying JSON files.
+
+---
+
+## Formatting
+
+- **2-space indentation** — always
+- No trailing commas in standard JSON (use `.jsonc` files for trailing commas and comments)
+- Property names in `camelCase`
+- Descriptive names — no abbreviations (`description` not `desc`)
+- End files with a newline
+
+```json
+{
+  "name": "example-project",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "npm run build:prod",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}
+```
+
+---
+
+## Property ordering
+
+For configuration files, use a consistent ordering:
+1. `name`, `version`, `description`
+2. `author`, `license`
+3. Core configuration keys
+4. Optional / environment-specific keys
+
+---
+
+## Data types
+
+Use appropriate JSON types — do not stringify booleans or numbers:
+
+```json
+{
+  "isActive": true,
+  "port": 5432,
+  "timeout": 30.5,
+  "tags": ["production", "web"],
+  "metadata": null
+}
+```
+
+Dates: always ISO 8601 — `"2024-01-15T10:30:00Z"`.
+Currency: store as integer cents — `"amountCents": 2999`, not `"amount": "$29.99"`.
+
+---
+
+## Secrets and sensitive values
+
+Never commit credentials, tokens, or API keys in JSON files.
+Use environment variable placeholders:
+
+```json
+{
+  "database": {
+    "host": "${DB_HOST}",
+    "password": "${DB_PASSWORD}"
+  }
+}
+```
+
+Use `.env.example` to document required variables without values.
+
+---
+
+## API responses
+
+Standardised response envelope:
+
+```json
+{
+  "data": {
+    "id": "abc-123",
+    "type": "user",
+    "attributes": {
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2024-01-15T10:30:00Z",
+    "version": "1.0"
+  }
+}
+```
+
+Error responses:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input",
+    "details": [
+      { "field": "email", "message": "Invalid email format" }
+    ]
+  },
+  "meta": {
+    "requestId": "req-xyz-789",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+Paginated responses:
+
+```json
+{
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "perPage": 20,
+    "total": 100,
+    "hasNext": true,
+    "hasPrev": false
+  }
+}
+```
+
+---
+
+## JSON Schema
+
+Always provide a schema for complex configuration files:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/config.json",
+  "title": "Application Configuration",
+  "type": "object",
+  "required": ["name", "version"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+---
+
+## VS Code settings files
+
+Use `.jsonc` for VS Code configuration files to allow comments and trailing commas:
+
+```jsonc
+// .vscode/settings.json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  // Enable JSON schema validation
+  "json.schemas": [
+    {
+      "fileMatch": ["**/config/*.json"],
+      "url": "./schemas/config-schema.json"
+    }
+  ]
+}
+```
+
+---
+
+## Linting
+
+Run `prettier --check **/*.json` in CI. Configure:
+
+```json
+{
+  "tabWidth": 2,
+  "trailingComma": "none",
+  "singleQuote": false
+}
+```

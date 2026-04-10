@@ -1,0 +1,75 @@
+{#
+  Template: Markdown Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/markdown.yaml.j2
+#}
+languages:
+  markdown:
+    file_associations:
+      "*.md": "markdown"
+      "*.markdown": "markdown"
+      "*.mdx": "mdx"
+
+    settings:
+      "[markdown]":
+        editor.formatOnSave: true
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.wordWrap: "on"
+        editor.wordWrapColumn: 120
+        editor.quickSuggestions:
+          other: false
+          comments: false
+          strings: false
+
+      "[mdx]":
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.wordWrap: "on"
+
+      markdown.preview.breaks: true
+      markdown.extension.toc.updateOnSave: true
+      markdown.extension.toc.levels: "2..6"
+      markdownlint.run: "onSave"
+      markdownlint.config:
+        MD013:
+          line_length: 120
+          tables: false
+          code_blocks: false
+        MD033: false
+        MD041: false
+
+    required_extensions:
+      - "yzhang.markdown-all-in-one"
+
+    recommended_extensions:
+      - "davidanson.vscode-markdownlint"
+      - "bierner.markdown-mermaid"
+      - "yzane.markdown-pdf"
+
+    tasks:
+      - label: "Markdown: Lint All"
+        type: "shell"
+        command: "npx"
+        args: ["markdownlint-cli", "**/*.md", "--ignore", "node_modules"]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Markdown: Check Links"
+        type: "shell"
+        command: "npx"
+        args: ["markdown-link-check", "**/*.md"]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+    linting:
+      enabled: true
+      tools:
+        - "markdownlint"
+      config_files:
+        - ".markdownlint.json"
+        - ".markdownlint.yaml"

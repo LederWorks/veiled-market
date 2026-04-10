@@ -1,0 +1,190 @@
+{#
+  Template: Yaml instruction stub
+  Output:   .github/instructions/yaml.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*.yaml,**/*.yml,**/*.yaml.j2,**/*.yml.j2"
+---
+
+# YAML Development Standards
+
+Apply these conventions when generating or modifying YAML files.
+
+---
+
+## Formatting
+
+- **2-space indentation** — never tabs
+- Prefer `.yaml` extension over `.yml` for new files; `.yml` only for tools that require it
+- Maximum line length: 120 characters
+- One blank line between top-level sections
+- End files with a newline
+
+```yaml
+# ✅ Good
+application:
+  name: "myapp"
+  version: "1.0.0"
+
+database:
+  host: "db.example.com"
+  port: 5432
+  ssl: true
+```
+
+---
+
+## Quoting
+
+- Quote strings that contain special characters, start with digits, or could be misread as booleans/nulls
+- Do **not** quote booleans (`true`, `false`) or integers unless they must be strings
+- Use double quotes consistently when quoting is needed
+
+```yaml
+# ✅ Good
+port: 5432             # integer
+debug: false           # boolean
+version: "14.5"        # version string — quote it
+name: "myapp"          # plain string — quote for consistency
+password: ""           # empty string must be quoted
+
+# ❌ Bad
+port: "5432"           # unnecessary quoting
+debug: "false"         # boolean as string causes bugs
+```
+
+---
+
+## Secrets and sensitive values
+
+Never hardcode credentials. Use environment variable references:
+
+```yaml
+database:
+  host: "${DATABASE_HOST:-localhost}"
+  port: "${DATABASE_PORT:-5432}"
+  password: "${DATABASE_PASSWORD}"
+
+api:
+  key: "${API_KEY}"        # never: api_key: "abc123"
+```
+
+---
+
+## File header
+
+Add a header comment on configuration files:
+
+```yaml
+# Application production configuration
+# Owner: Platform Team <platform@example.com>
+# Schema: schemas/app-config.json
+---
+application:
+  name: "myapp"
+```
+
+---
+
+## Arrays
+
+Use block style for complex arrays; inline (flow) style is fine for short, simple lists:
+
+```yaml
+# Short — inline is fine
+tags: ["production", "web", "api"]
+
+# Complex — block style
+servers:
+  - name: "web-01"
+    ip: "10.0.1.10"
+    role: "frontend"
+
+  - name: "db-01"
+    ip: "10.0.2.10"
+    role: "database"
+```
+
+---
+
+## Anchors and aliases
+
+Use YAML anchors for shared configuration — avoid repeating the same block:
+
+```yaml
+defaults: &defaults
+  timeout: 30
+  retries: 3
+  ssl_verify: true
+
+production:
+  <<: *defaults
+  log_level: "warn"
+
+staging:
+  <<: *defaults
+  log_level: "info"
+  ssl_verify: false
+```
+
+---
+
+## Kubernetes manifests
+
+Follow these conventions:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: production
+  labels:
+    app: myapp
+    version: "1.0.0"
+    environment: production
+spec:
+  template:
+    spec:
+      containers:
+        - name: myapp
+          image: "registry/myapp:1.0.0"   # always pin — never :latest
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          env:
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+```
+
+Always define `resources.requests` and `resources.limits`. Never use `latest` image tags in production.
+
+---
+
+## Validation
+
+Use `yamllint` with this config:
+
+```yaml
+# .yamllint.yml
+extends: default
+rules:
+  line-length:
+    max: 120
+    level: warning
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  truthy:
+    allowed-values: ['true', 'false']
+```
+
+Run: `yamllint -c .yamllint.yml .`

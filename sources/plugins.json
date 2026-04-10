@@ -147,6 +147,86 @@
       "category": "infrastructure",
       "tags": ["kubernetes", "k8s", "helm", "containers", "devops", "cloud", "terraform"],
       "categories": ["DevOps"]
+    },
+    {
+      "name": "socrates",
+      "description": "Validates a plugin against marketplace-patterns rules using Socratic dialogue. Spawns a scanner, asks targeted questions, writes a structured TODO file and inline summary.",
+      "version": "1.0.0",
+      "source": "./plugins/socrates/claude",
+      "platform_sources": {
+        "claude": "./plugins/socrates/claude",
+        "copilot": "./plugins/socrates/copilot"
+      },
+      "author": {
+        "name": "Ledermayer"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/socrates",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["validation", "audit", "marketplace", "plugin", "quality"],
+      "category": "Security",
+      "tags": ["devtools", "quality", "validation", "audit"],
+      "categories": ["AI Agents", "Coding"]
+    },
+    {
+      "name": "atlas",
+      "description": "Local workspace and project setup — init, update, and validate AI context files, IDE settings, and project scaffolding for both Copilot CLI and Claude Code.",
+      "version": "1.0.0",
+      "source": "./plugins/atlas/claude",
+      "platform_sources": {
+        "claude": "./plugins/atlas/claude",
+        "copilot": "./plugins/atlas/copilot"
+      },
+      "author": {
+        "name": "Ledermayer"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/atlas",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["workspace", "project", "setup", "init", "ide", "scaffold", "dual-platform"],
+      "category": "Coding",
+      "tags": ["devtools", "workspace", "scaffold", "setup", "ide"],
+      "categories": ["AI Agents", "Coding"]
+    },
+    {
+      "name": "daedalus",
+      "description": "Skill-creator for Copilot CLI extensions. Helps the user design, scaffold, validate, and activate a new Copilot CLI extension interactively.",
+      "version": "1.0.0",
+      "source": "./plugins/daedalus/claude",
+      "platform_sources": {
+        "claude": "./plugins/daedalus/claude",
+        "copilot": "./plugins/daedalus/copilot"
+      },
+      "author": {
+        "name": "Ledermayer"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/daedalus",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["extension", "skill", "scaffold", "devtools", "copilot"],
+      "category": "Coding",
+      "tags": ["devtools", "extensions", "scaffold", "copilot-cli"],
+      "categories": ["AI Agents", "Coding"]
+    },
+    {
+      "name": "aristotle",
+      "description": "Plugin lifecycle orchestrator for veiled-market. Triages Socrates findings, manages semver versions, audits plugin health, and runs quality eval loops.",
+      "version": "1.0.0",
+      "source": "./plugins/aristotle/copilot",
+      "platform_sources": {
+        "claude": "./plugins/aristotle/claude",
+        "copilot": "./plugins/aristotle/copilot"
+      },
+      "author": {
+        "name": "veiled-market contributors"
+      },
+      "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/aristotle",
+      "repository": "https://github.com/LederWorks/veiled-market",
+      "license": "MIT",
+      "keywords": ["plugin", "lifecycle", "orchestration", "versioning"],
+      "category": "Coding",
+      "tags": ["devtools", "marketplace"],
+      "categories": ["AI Agents", "Coding"]
     }
   ]
 }

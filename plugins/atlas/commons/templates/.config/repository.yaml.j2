@@ -1,0 +1,24 @@
+{#- repository.yaml.j2 — v1.0.0 #}
+{#- Repository metadata — set during project init, edited as your repo evolves. #}
+{#- Used by project update to refresh instruction stubs and VS Code config. #}
+{#- Variables: detected_languages (list), repo_types (list), ci_platform (str), git_mode (str) #}
+
+# Primary language(s) detected in this repository
+# Common values: terraform, python, go, typescript, yaml, json, powershell, shell, markdown, sql
+languages:
+{{ detected_languages | indent(2) }}
+
+# Repository type(s) — guides which instruction stubs are deployed
+# Common values: infrastructure, application, library, pipeline, documentation, monorepo
+types:
+{{ repo_types | indent(2) }}
+
+# Primary CI/CD platform: azure-devops | github | none
+platform: {{ ci_platform }}
+
+# Git repository mode (set by project init — reflects .git detection result)
+# Values: single | workspace-root-only | workspace-sub-repos | workspace-both
+git_mode: {{ git_mode }}
+
+# Optional: tags for categorization (e.g. azure, aks, public, team-platform)
+tags: []

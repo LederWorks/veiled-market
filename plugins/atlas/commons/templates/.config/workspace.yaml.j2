@@ -1,0 +1,30 @@
+{#- workspace.yaml.j2 — v1.0.0 #}
+{#- Workspace overrides — manual customizations that survive project update. #}
+{#- Edit this file to add repo-specific extensions, tasks, or settings. #}
+{#- project update will NOT overwrite this file. #}
+
+workspace:
+  # Additional VS Code extension IDs beyond language defaults
+  # Example: ["ms-azuretools.vscode-docker", "redhat.vscode-xml"]
+  extra_extensions: []
+
+  # Additional VS Code settings that override language defaults
+  # Example: {"editor.rulers": [100], "terminal.integrated.defaultProfile.osx": "zsh"}
+  extra_settings: {}
+
+  # Additional VS Code tasks beyond language defaults
+  extra_tasks: []
+
+  # Additional debug launch configurations
+  extra_launch_configurations: []
+
+  # Extensions to suppress from recommendations (unwanted recommendations)
+  unwanted_extensions: []
+
+# GitHub Copilot custom instructions for this specific repository
+copilot:
+  # Project-specific rules appended to .github/copilot-instructions.md
+  custom_rules: []
+
+  # Files to apply extra instructions to (default: all files)
+  apply_to: "**"

@@ -1,0 +1,152 @@
+{#
+  Template: TypeScript / JavaScript Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables:
+    Required: (none)
+    Optional: types (list[str]) — may include: "frontend", "backend", "testing"
+  Source:   ported from myrepos/templates/languages/typescript.yaml.j2
+#}
+languages:
+  typescript:
+    file_associations:
+      "*.ts": "typescript"
+      "*.tsx": "typescriptreact"
+      "*.js": "javascript"
+      "*.jsx": "javascriptreact"
+      "*.mjs": "javascript"
+      "*.cjs": "javascript"
+
+    settings:
+      "[typescript]":
+        editor.formatOnSave: true
+        editor.defaultFormatter: "esbenp.prettier-vscode"
+        editor.codeActionsOnSave:
+          source.fixAll.eslint: "explicit"
+          source.organizeImports: "explicit"
+        editor.tabSize: 2
+        editor.insertSpaces: true
+
+      "[typescriptreact]":
+        editor.formatOnSave: true
+        editor.defaultFormatter: "esbenp.prettier-vscode"
+        editor.codeActionsOnSave:
+          source.fixAll.eslint: "explicit"
+          source.organizeImports: "explicit"
+        editor.tabSize: 2
+        editor.insertSpaces: true
+
+      "[javascript]":
+        editor.formatOnSave: true
+        editor.defaultFormatter: "esbenp.prettier-vscode"
+        editor.tabSize: 2
+        editor.insertSpaces: true
+
+      typescript.preferences.includePackageJsonAutoImports: "auto"
+      typescript.updateImportsOnFileMove.enabled: "always"
+      typescript.suggest.autoImports: true
+      typescript.inlayHints.parameterNames.enabled: "literals"
+      typescript.inlayHints.variableTypes.enabled: true
+      typescript.inlayHints.functionLikeReturnTypes.enabled: true
+
+    required_extensions:
+      - "ms-vscode.vscode-typescript-next"
+      - "esbenp.prettier-vscode"
+      - "dbaeumer.vscode-eslint"
+
+    recommended_extensions:
+      - "usernamehw.errorlens"
+      - "streetsidesoftware.code-spell-checker"
+      - "christian-kohler.path-intellisense"
+{% if types is defined and 'frontend' in types %}
+      - "bradlc.vscode-tailwindcss"
+      - "dsznajder.es7-react-js-snippets"
+      - "steoates.autoimport-es6-ts"
+{% endif %}
+{% if types is defined and 'testing' in types %}
+      - "orta.vscode-jest"
+      - "kavod-io.vscode-jest-test-adapter"
+{% endif %}
+
+    tasks:
+      - label: "TypeScript: Build"
+        type: "npm"
+        script: "build"
+        group:
+          kind: "build"
+          isDefault: true
+        problemMatcher: ["$tsc"]
+
+      - label: "TypeScript: Type Check"
+        type: "shell"
+        command: "npx"
+        args: ["tsc", "--noEmit"]
+        group: "build"
+        problemMatcher: ["$tsc"]
+
+      - label: "ESLint: Fix All"
+        type: "shell"
+        command: "npx"
+        args: ["eslint", ".", "--ext", ".ts,.tsx,.js,.jsx", "--fix"]
+        group: "build"
+        problemMatcher: ["$eslint-stylish"]
+
+      - label: "Prettier: Format All"
+        type: "shell"
+        command: "npx"
+        args: ["prettier", "--write", "."]
+        group: "build"
+{% if types is defined and 'testing' in types %}
+
+      - label: "Jest: Run Tests"
+        type: "npm"
+        script: "test"
+        group:
+          kind: "test"
+          isDefault: true
+        problemMatcher: ["$eslint-stylish"]
+
+      - label: "Jest: Coverage"
+        type: "npm"
+        script: "test:coverage"
+        group: "test"
+{% endif %}
+
+    launch_configurations:
+      - name: "Node: Launch App"
+        type: "node"
+        request: "launch"
+        program: "${workspaceFolder}/dist/index.js"
+        outFiles:
+          - "${workspaceFolder}/dist/**/*.js"
+        env:
+          NODE_ENV: "development"
+        console: "integratedTerminal"
+{% if types is defined and 'testing' in types %}
+
+      - name: "Jest Tests"
+        type: "node"
+        request: "launch"
+        program: "${workspaceFolder}/node_modules/.bin/jest"
+        args: ["--runInBand", "--no-coverage"]
+        cwd: "${workspaceFolder}"
+        console: "integratedTerminal"
+        skipFiles: ["<node_internals>/**"]
+{% endif %}
+
+    linting:
+      enabled: true
+      tools:
+        - "eslint"
+        - "prettier"
+        - "tsc"
+      config_files:
+        - ".eslintrc.json"
+        - ".prettierrc"
+        - "tsconfig.json"
+
+    package_management:
+      tool: "npm"
+      config_files:
+        - "package.json"
+        - "package-lock.json"

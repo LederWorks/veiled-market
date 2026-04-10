@@ -1,0 +1,13 @@
+{#- marketplace.yaml.j2 — v1.0.0 #}
+{#- Marketplace installation metadata — written by project init. #}
+{#- Records which marketplace instance is installed and at what version. #}
+{#- Variables: marketplace_source (str), marketplace_version (str), installed_at (str) #}
+
+# Marketplace installation record
+source: {{ marketplace_source }}
+version: {{ marketplace_version }}
+installed_at: {{ installed_at }}
+
+# Local installation path (where the marketplace was cloned/installed)
+# Used by project to locate templates and instruction stubs
+local_path: {{ marketplace_local_path | default("~/.copilot/marketplace") }}

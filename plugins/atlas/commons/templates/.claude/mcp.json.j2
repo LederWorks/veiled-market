@@ -1,0 +1,43 @@
+{# Claude Code MCP — uses "mcpServers" key #}
+{#
+  Template: .claude/mcp.json
+  Output:   .claude/mcp.json
+  Scope:    project (target repo generation — requires 'claude' in enabled_ides)
+  Docs:     https://docs.anthropic.com/en/docs/claude-code/mcp
+
+  NOTE: Claude Code uses "mcpServers" (not "servers"). This is DIFFERENT from the
+  VS Code MCP config (.vscode/mcp.json) which uses "servers".
+
+  Required: mcp_servers (list)
+    Each item:
+      name        (str)  — camelCase server identifier
+      type        (str)  — "stdio" | "http"  (default: "stdio")
+      # stdio fields:
+      command     (str)  — e.g. "npx", "python", "docker"
+      args        (list[str], optional)
+      env_vars    (list[{key, input_id}], optional) — maps env key to env var name
+      # http fields:
+      url         (str)  — full URL including path
+      headers     (dict, optional)
+#}
+{
+  "mcpServers": {
+{% for server in mcp_servers %}
+{%- set stype = server.type | default('stdio') %}
+    {{ server.name | tojson }}: {
+      "type": {{ stype | tojson }},
+{% if stype == 'http' %}      "url": {{ server.url | tojson }}{% if server.headers is defined and server.headers %},
+      "headers": {{ server.headers | tojson }}{% endif %}
+
+{% else %}      "command": {{ server.command | default('npx') | tojson }},
+{% if server.args is defined and server.args %}      "args": {{ server.args | tojson }}{% if server.env_vars is defined and server.env_vars %},
+{% endif %}{% endif %}{% if server.env_vars is defined and server.env_vars %}      "env": {
+{% for ev in server.env_vars %}        {{ ev.key | tojson }}: {{ ev.value | tojson }}{% if not loop.last %},
+{% endif %}{% endfor %}
+
+      }{% endif %}
+
+{% endif %}    }{% if not loop.last %},{% endif %}
+
+{% endfor %}  }
+}

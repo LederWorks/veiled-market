@@ -1,0 +1,58 @@
+{#
+  Template: JSON Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/json.yaml.j2
+#}
+languages:
+  json:
+    file_associations:
+      "*.json": "json"
+      "*.jsonc": "jsonc"
+
+    settings:
+      "[json]":
+        editor.formatOnSave: true
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.defaultFormatter: "vscode.json-language-features"
+
+      "[jsonc]":
+        editor.formatOnSave: true
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.defaultFormatter: "vscode.json-language-features"
+
+      json.schemas: []
+      json.format.keepLines: false
+      json.validate.enable: true
+
+    required_extensions:
+      - "ms-vscode.json"
+
+    recommended_extensions:
+      - "eriklynd.json-tools"
+      - "zainchen.json"
+
+    tasks:
+      - label: "JSON: Validate"
+        type: "shell"
+        command: "npx"
+        args: ["jsonlint", "--quiet", "**/*.json"]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "JSON: Format (prettier)"
+        type: "shell"
+        command: "npx"
+        args: ["prettier", "--write", "**/*.json"]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+    linting:
+      enabled: true
+      tools:
+        - "jsonlint"

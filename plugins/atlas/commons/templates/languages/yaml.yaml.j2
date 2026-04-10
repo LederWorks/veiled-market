@@ -1,0 +1,58 @@
+{#
+  Template: YAML Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/yaml.yaml.j2
+#}
+languages:
+  yaml:
+    file_associations:
+      "*.yaml": "yaml"
+      "*.yml": "yaml"
+      ".yamllint": "yaml"
+      "*.yaml.j2": "jinja-yaml"
+
+    settings:
+      "[yaml]":
+        editor.formatOnSave: true
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.wordWrap: "on"
+
+      yaml.validate: true
+      yaml.format.enable: true
+      yaml.hover: true
+      yaml.completion: true
+      yaml.schemas: {}
+
+    required_extensions:
+      - "redhat.vscode-yaml"
+
+    recommended_extensions:
+      - "wholroyd.jinja"
+
+    tasks:
+      - label: "YAML: Lint All"
+        type: "shell"
+        command: "yamllint"
+        args: ["."]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "YAML: Validate Schema"
+        type: "shell"
+        command: "python"
+        args: ["-c", "import yaml, sys; [yaml.safe_load(open(f)) for f in sys.argv[1:]]", "**/*.yaml"]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+    linting:
+      enabled: true
+      tools:
+        - "yamllint"
+      config_files:
+        - ".yamllint.yaml"
+        - ".yamllint"

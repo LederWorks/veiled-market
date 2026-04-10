@@ -1,0 +1,90 @@
+{#
+  Template: Github instruction stub
+  Output:   .github/instructions/github.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: ".github/**/*.yml,.github/**/*.yaml,.github/**/*.md"
+---
+
+# GitHub Configuration and Workflow Standards
+
+Apply these conventions when creating or modifying GitHub Actions workflows, repository configuration, and related files.
+
+## Workflow structure
+
+Always pin action versions to a specific SHA or tag — avoid `@latest`:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-go@v5
+  with:
+    go-version: '1.22'
+    cache-dependency-path: go.sum
+```
+
+## Job design
+
+Keep jobs focused on a single concern. Use `needs:` to express dependencies between jobs. Use caching to speed up repeated dependency installs:
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: go.sum
+      - run: go test ./...
+```
+
+## Secrets and environment variables
+
+Never hardcode tokens, passwords, or subscription IDs. Use `${{ secrets.SECRET_NAME }}` for sensitive values. Use `${{ vars.VAR_NAME }}` for non-sensitive configuration.
+
+```yaml
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+steps:
+  - uses: docker/login-action@v3
+    with:
+      registry: ${{ env.REGISTRY }}
+      username: ${{ github.actor }}
+      password: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## Security practices
+
+- Enable CodeQL scanning for all repos with application code
+- Require pull request reviews before merging to `main`
+- Use `permissions:` at the job level, not the workflow level — grant minimum required permissions
+
+```yaml
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write
+```
+
+## Conventional commits in PR titles
+
+PR titles should follow Conventional Commits format: `type(scope): description`
+
+Valid types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`
+
+## Branch protection
+
+`main` branch should require:
+- Passing status checks
+- At least 1 approving review
+- No force pushes
+- Linear history
+
+## Reusable workflows
+
+Extract repeated job sequences into reusable workflows under `.github/workflows/`. Call them with `uses: ./.github/workflows/reusable-job.yml`.

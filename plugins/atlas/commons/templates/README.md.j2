@@ -1,0 +1,170 @@
+{#
+  Template: README.md
+  Output:   README.md
+  Scope:    project (target repo generation — all projects)
+  Required: project_name (str)
+  Optional: description (str),
+            detected_languages (list[str]),
+            terraform_version (str, default "1.0"),
+            cloud_targets (list[str] — azure | aws | gcp | oci),
+            repo_url (str),
+            package_manager (str — npm | yarn | pnpm, default "npm"),
+            license (str),
+            maintainers (list[str])
+
+  Language keys match templates/languages/<lang>.yaml.j2 names.
+#}
+# {{ project_name }}
+
+{{ description | default('Brief description of this repository.') }}
+
+## Overview
+
+<!-- Provide a more detailed description of what this repository contains and its purpose. -->
+
+{% if detected_languages is defined and detected_languages %}
+## Technologies
+
+This project uses:
+
+{% for lang in detected_languages %}
+- {{ lang | title }}
+{% endfor %}
+
+{% endif %}
+{% if detected_languages is defined and 'terraform' in detected_languages %}
+## Prerequisites
+
+- [Terraform](https://www.terraform.io/downloads.html) >= {{ terraform_version | default('1.0') }}
+{% if cloud_targets is defined %}
+{% if 'azure' in cloud_targets %}
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) — run `az login` before applying
+{% endif %}
+{% if 'aws' in cloud_targets %}
+- [AWS CLI](https://aws.amazon.com/cli/) — run `aws configure` before applying
+{% endif %}
+{% if 'gcp' in cloud_targets %}
+- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) — run `gcloud auth login` before applying
+{% endif %}
+{% if 'oci' in cloud_targets %}
+- [OCI CLI](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm) — configure `~/.oci/config` before applying
+{% endif %}
+{% endif %}
+
+## Usage
+
+```bash
+# Initialise Terraform
+terraform init
+
+# Review the execution plan
+terraform plan
+
+# Apply the configuration
+terraform apply
+```
+
+{% endif %}
+{% if detected_languages is defined and 'python' in detected_languages %}
+## Getting Started
+
+```bash
+# Clone the repository
+git clone {{ repo_url | default('<repository-url>') }}
+cd {{ project_name }}
+
+# Create a virtual environment
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+## Development
+
+```bash
+# Install dev dependencies
+pip install -r requirements-dev.txt
+
+# Run tests
+pytest
+
+# Lint and format
+ruff check .
+ruff format .
+```
+
+{% endif %}
+{% if detected_languages is defined and 'typescript' in detected_languages %}
+## Getting Started
+
+```bash
+# Clone the repository
+git clone {{ repo_url | default('<repository-url>') }}
+cd {{ project_name }}
+
+# Install dependencies
+{{ package_manager | default('npm') }} install
+```
+
+## Usage
+
+```bash
+# Start development server
+{{ package_manager | default('npm') }} run dev
+
+# Build for production
+{{ package_manager | default('npm') }} run build
+
+# Run tests
+{{ package_manager | default('npm') }} test
+```
+
+{% endif %}
+{% if detected_languages is defined and 'go' in detected_languages %}
+## Getting Started
+
+```bash
+# Clone the repository
+git clone {{ repo_url | default('<repository-url>') }}
+cd {{ project_name }}
+
+# Download dependencies
+go mod download
+```
+
+## Usage
+
+```bash
+# Build
+go build ./...
+
+# Run tests
+go test ./...
+
+# Run
+go run .
+```
+
+{% endif %}
+
+## Contributing
+
+1. Create a feature branch: `git checkout -b feat/your-feature`
+2. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org): `git commit -m 'feat: add amazing feature'`
+3. Push the branch: `git push origin feat/your-feature`
+4. Open a pull request
+
+## License
+
+{{ license | default('See [LICENSE](LICENSE) for details.') }}
+
+{% if maintainers is defined and maintainers %}
+## Maintainers
+
+{% for maintainer in maintainers %}
+- {{ maintainer }}
+{% endfor %}
+
+{% endif %}

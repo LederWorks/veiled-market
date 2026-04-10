@@ -8,6 +8,7 @@ on:
     paths:
       - "sources/**"
       - "schemas/**"
+      - "plugins/*/commons/**"
       - ".github/plugin/marketplace.json"
       - ".claude-plugin/marketplace.json"
 
@@ -129,6 +130,37 @@ jobs:
               except json.JSONDecodeError as e:
                   print(f"❌ {path}: {e}")
                   errors.append(path)
+          if errors:
+              sys.exit(1)
+          EOF
+
+      - name: Validate plugins/*/commons/plugin.base.json
+        run: |
+          python3 - <<'EOF'
+          import json, jsonschema, sys, pathlib
+          schema_path = pathlib.Path("schemas/plugin.base.schema.json")
+          if not schema_path.exists():
+              print("⚠️  schemas/plugin.base.schema.json not found — skipping")
+              sys.exit(0)
+          with open(schema_path) as f:
+              schema = json.load(f)
+          errors = []
+          base_files = list(pathlib.Path("plugins").glob("*/commons/plugin.base.json"))
+          if not base_files:
+              print("No plugins/*/commons/plugin.base.json files found — nothing to validate")
+              sys.exit(0)
+          for path in base_files:
+              try:
+                  with open(path) as f:
+                      data = json.load(f)
+                  jsonschema.validate(data, schema)
+                  print(f"✅ {path}")
+              except jsonschema.ValidationError as e:
+                  print(f"❌ {path}: {e.message}")
+                  errors.append(str(path))
+              except json.JSONDecodeError as e:
+                  print(f"❌ {path}: invalid JSON — {e}")
+                  errors.append(str(path))
           if errors:
               sys.exit(1)
           EOF

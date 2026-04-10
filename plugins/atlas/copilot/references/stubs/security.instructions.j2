@@ -1,0 +1,97 @@
+{#
+  Template: Security instruction stub
+  Output:   .github/instructions/security.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*.go,**/*.py,**/*.ts,**/*.js,**/*.tsx,**/*.jsx"
+---
+
+# Security Instructions
+
+Apply these security practices when generating or modifying application code. These are requirements, not suggestions.
+
+## Input validation (system boundaries)
+
+- Validate and sanitise all external inputs: HTTP request bodies, query params, headers, file uploads, webhook payloads, CLI arguments
+- Use allowlists over denylists for permitted values
+- Validate schema and types before processing — reject early, fail with a clear error
+
+## Injection prevention
+
+### SQL
+Always use parameterised queries — never string concatenation or interpolation:
+```go
+// Go
+rows, err := db.Query("SELECT * FROM users WHERE id = $1", userID)
+```
+```python
+# Python
+cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+```
+```typescript
+// TypeScript
+await db.query('SELECT * FROM users WHERE id = $1', [userId]);
+```
+
+### Shell commands
+Never interpolate user input into shell strings. Use argument arrays:
+```go
+exec.Command("tool", arg1, arg2)       // Go — never exec.Command("sh", "-c", "tool "+input)
+```
+```python
+subprocess.run(["tool", arg1], shell=False)  # Python — shell=True is banned with user input
+```
+
+### Path traversal
+Validate resolved paths stay within the expected base directory:
+```go
+clean := filepath.Clean(filepath.Join(base, userInput))
+if !strings.HasPrefix(clean, filepath.Clean(base)+string(os.PathSeparator)) {
+    return errors.New("invalid path")
+}
+```
+
+### XSS (TypeScript/React)
+Use framework auto-escaping. Avoid `dangerouslySetInnerHTML`. If HTML is required, use `DOMPurify.sanitize()`.
+
+## Authentication and authorisation
+
+- Check authorisation on every sensitive operation — not just at route registration
+- Use constant-time comparison for secret/token equality: `hmac.Equal` (Go), `secrets.compare_digest` (Python), `crypto.timingSafeEqual` (Node)
+- Validate JWT signature server-side; allowlist algorithms explicitly — never allow `alg: none`
+- Invalidate sessions on logout
+
+## Secrets and credentials
+
+- Never hardcode credentials, API keys, or tokens in source code
+- Load from environment variables or secret stores (Key Vault, Vault, AWS SSM)
+- Mark sensitive outputs and variables with `sensitive = true` (Terraform)
+- Never log tokens, passwords, or PII — redact in structured log fields
+
+## Cryptography
+
+- Symmetric encryption: `AES-256-GCM` or `ChaCha20-Poly1305`
+- Password hashing: `bcrypt` (cost ≥ 12) or `argon2id`
+- Do not use: MD5, SHA1, DES, ECB mode, or RC4 for any security purpose
+- Do not implement custom cryptographic algorithms
+
+## Error handling
+
+- Return generic error messages to clients — never expose stack traces, SQL errors, or internal paths
+- Log detailed errors server-side with structured fields
+- Fail closed: when authorisation is uncertain, deny access and log the event
+
+## SSRF prevention
+
+- Do not pass user-controlled values directly to HTTP clients as URLs
+- Maintain an allowlist of permitted outbound domains
+- Resolve destination IPs and reject RFC-1918 ranges (10.x, 172.16-31.x, 192.168.x) in non-internal outbound calls
+
+## Security logging
+
+Log the following events at minimum:
+- Authentication success and failure (with username, IP, timestamp)
+- Authorisation denials
+- Input validation failures on sensitive endpoints
+- Privilege escalation or admin actions

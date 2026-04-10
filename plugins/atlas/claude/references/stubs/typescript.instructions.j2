@@ -1,0 +1,109 @@
+{#
+  Template: Typescript instruction stub
+  Output:   .github/instructions/typescript.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*.ts,**/*.tsx,**/*.js,**/*.jsx"
+---
+
+# TypeScript / React Development Standards
+
+Apply these conventions when generating or modifying TypeScript or React code.
+
+## Types
+
+Always use explicit types — avoid `any`. Prefer interfaces for object shapes, type aliases for unions/intersections.
+
+```typescript
+// ✅ Good
+interface Resource {
+    id: string;
+    name: string;
+    provider: 'aws' | 'azure' | 'gcp';
+    createdAt: string;
+}
+
+// ❌ Bad
+const resource: any = { ... };
+```
+
+## Functions and components
+
+Use `const` with arrow functions for React components. Destructure props with an interface:
+
+```tsx
+interface ResourceCardProps {
+    resource: Resource;
+    onDelete: (id: string) => void;
+    className?: string;
+}
+
+export const ResourceCard: React.FC<ResourceCardProps> = ({
+    resource,
+    onDelete,
+    className = '',
+}) => {
+    return (
+        <div className={`resource-card ${className}`}>
+            <h3>{resource.name}</h3>
+        </div>
+    );
+};
+```
+
+## Hooks
+
+Extract reusable state logic into custom hooks. Handle loading and error states explicitly:
+
+```typescript
+export const useResources = () => {
+    const [resources, setResources] = useState<Resource[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchResources = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await resourceService.list();
+            setResources(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to fetch');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    return { resources, loading, error, fetchResources };
+};
+```
+
+## Naming conventions
+
+- Components and types: `PascalCase` — `ResourceCard`, `UserService`
+- Functions and variables: `camelCase` — `getUserById`, `isLoading`
+- Constants: `UPPER_SNAKE_CASE` — `API_BASE_URL`, `MAX_RETRIES`
+- Files: `kebab-case` — `resource-card.tsx`, `use-resources.ts`
+
+## Error handling
+
+Always handle promise rejections. Use `try/catch` in async functions:
+
+```typescript
+async function fetchUser(id: string): Promise<User> {
+    if (!id) throw new Error('User ID is required');
+    const response = await api.get(`/users/${id}`);
+    return response.data;
+}
+```
+
+## Imports
+
+Organize imports: external libraries → internal modules → relative imports. Use barrel exports (`index.ts`) for directories.
+
+## Linting and formatting
+
+- `eslint` with `prettier` for style enforcement
+- `eslint --fix` and `prettier --write` before committing
+- `tsc --noEmit` to check types without building

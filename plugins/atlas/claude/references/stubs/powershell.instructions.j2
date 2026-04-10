@@ -1,0 +1,101 @@
+{#
+  Template: Powershell instruction stub
+  Output:   .github/instructions/powershell.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*.ps1"
+---
+
+# PowerShell Script Standards
+
+Apply these conventions when generating or modifying PowerShell scripts. See `scripts.instructions.md` for cross-platform conventions.
+
+## Script header
+
+```powershell
+[CmdletBinding()]
+param(
+    [switch]$VerboseOutput,
+    [switch]$SkipInstall,
+    [string]$Config = "",
+    [switch]$Help
+)
+
+if ($Help) {
+    Write-Host "Script Name" -ForegroundColor Blue
+    Write-Host ""
+    Write-Host "USAGE:" -ForegroundColor Yellow
+    Write-Host "  .\scripts\script-name.ps1 [options]"
+    Write-Host ""
+    Write-Host "OPTIONS:" -ForegroundColor Yellow
+    Write-Host "  -VerboseOutput    Enable verbose output"
+    Write-Host "  -SkipInstall      Skip tool installation/updates"
+    Write-Host "  -Config <path>    Custom config file path"
+    Write-Host "  -Help             Show this help"
+    exit 0
+}
+
+$ErrorActionPreference = "Stop"
+```
+
+## Naming conventions
+
+- Variables: `PascalCase` — `$ProjectRoot`, `$ConfigPath`
+- Switch params: `PascalCase` — `-SkipInstall`, `-VerboseOutput`
+- Use `-VerboseOutput` not `-Verbose` to avoid conflicts with the built-in `$VerbosePreference`
+
+## Path construction
+
+```powershell
+$ScriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $ScriptDir
+
+$BackendDir  = Join-Path $ProjectRoot "backend"
+$ConfigPath  = Join-Path $ProjectRoot ".golangci.yml"
+```
+
+## Output functions
+
+```powershell
+function Write-Status  { param([string]$Message) Write-Host "[INFO] $Message"    -ForegroundColor Cyan }
+function Write-Success { param([string]$Message) Write-Host "[SUCCESS] $Message" -ForegroundColor Green }
+function Write-Warn    { param([string]$Message) Write-Host "[WARNING] $Message" -ForegroundColor Yellow }
+function Write-Fail    { param([string]$Message) Write-Host "[ERROR] $Message"   -ForegroundColor Red }
+```
+
+## Exit code checking
+
+```powershell
+go build ./...
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail "Go build failed"
+    exit 1
+}
+Write-Success "Build succeeded"
+```
+
+## Error handling
+
+```powershell
+try {
+    Set-Location $BackendDir
+    # operations
+} catch {
+    Write-Fail "Operation failed: $($_.Exception.Message)"
+    exit 1
+} finally {
+    Set-Location $OriginalLocation
+}
+```
+
+## Calling component scripts
+
+```powershell
+$componentScript = Join-Path $ScriptDir "backend\backend_test.ps1"
+$args = @()
+if ($VerboseOutput) { $args += "-VerboseOutput" }
+if ($SkipInstall)   { $args += "-SkipInstall" }
+& $componentScript @args
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+```

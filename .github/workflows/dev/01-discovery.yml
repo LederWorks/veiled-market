@@ -1,5 +1,9 @@
 name: "01 · Discover & Draft"
 
+# ⚠️  SHELVED: Automated triggers (schedule + workflow_run) removed 2026-04-10.
+# This workflow generated too many issue drafts. Run manually only via workflow_dispatch.
+# Re-enable triggers when the discovery pipeline is ready for production use.
+
 # Discovers resources from all registered marketplace sources for every plugin.
 # Creates one GitHub Issue per resource, automatically labeled status/draft so
 # Stage 2 (Evaluate) picks them up without any manual intervention.
@@ -7,10 +11,6 @@ name: "01 · Discover & Draft"
 # for each plugin run in a shell loop within the same job.
 
 on:
-  workflow_run:
-    workflows: ["00 · Setup Plugins"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       plugin:
@@ -22,8 +22,6 @@ on:
         type: boolean
         required: false
         default: false
-  schedule:
-    - cron: "0 6 * * 1"   # Weekly — Monday 06:00 UTC
 
 concurrency:
   group: discovery-${{ github.ref }}
@@ -39,8 +37,6 @@ jobs:
   setup:
     name: Read plugin list
     runs-on: ubuntu-latest
-    # Skip when upstream workflow_run failed
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
     outputs:

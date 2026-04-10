@@ -1,0 +1,76 @@
+{#- copilot-instructions.md.j2 — v2.0.0 -#}
+{#- Variables:
+     project_name (string, required) — project display name
+     project_description (string, required) — one-line project description
+     has_instructions_dir (bool, optional) — whether .github/instructions/ exists
+     inventory_items (list[{path, purpose, status}], optional) — component inventory rows
+     prerequisites (string, optional) — build prerequisites prose
+     build_commands (list[{command, description}], optional) — build command entries
+     architecture_notes (string, optional) — architecture description prose
+     test_commands (list[{command, description}], optional) — test command entries
+     modules (list[{name, impl, tests, docs, status}], optional) — module status rows
+-#}
+<!-- project-template: copilot-instructions v2.0.0 -->
+# {{ project_name }}
+
+{{ project_description }}
+
+{% if has_instructions_dir %}
+## 📋 Documentation Map
+
+```
+.github/copilot-instructions.md              ← Project identity (this file)
+├── .github/instructions/*.instructions.md   ← Coding standards (per-technology)
+└── docs/                                    ← Architecture documents and ADRs
+```
+
+Coding standards live in `.github/instructions/` — **not** in this file.
+{% endif %}
+
+## 📁 Component Inventory
+
+| Path | Purpose | Status |
+|------|---------|--------|
+{% for item in inventory_items %}| `{{ item.path }}` | {{ item.purpose }} | {{ item.status }} |
+{% endfor %}
+
+## 🏗️ Build & Development
+
+{% if prerequisites %}
+### Prerequisites
+
+{{ prerequisites }}
+{% endif %}
+
+### Commands
+
+{% for cmd in build_commands %}```bash
+{{ cmd.command }}
+```
+{{ cmd.description }}
+
+{% endfor %}
+{% if test_commands %}
+### Testing
+
+{% for cmd in test_commands %}```bash
+{{ cmd.command }}
+```
+{{ cmd.description }}
+
+{% endfor %}
+{% endif %}
+{% if architecture_notes %}
+### Architecture
+
+{{ architecture_notes }}
+{% endif %}
+
+{% if modules %}
+## 📚 Module Status
+
+| Module | Implementation | Testing | Documentation | Status |
+|--------|---------------|---------|---------------|--------|
+{% for m in modules %}| `{{ m.name }}` | {{ m.impl }} | {{ m.tests }} | {{ m.docs }} | {{ m.status }} |
+{% endfor %}
+{% endif %}

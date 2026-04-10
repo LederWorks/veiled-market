@@ -1,0 +1,127 @@
+{#
+  Template: Python Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/python.yaml.j2
+#}
+languages:
+  python:
+    file_associations:
+      "*.py": "python"
+      "*.pyi": "python"
+      "*.pyw": "python"
+      "Pipfile": "pip-requirements"
+      "requirements*.txt": "pip-requirements"
+
+    settings:
+      "[python]":
+        editor.formatOnSave: true
+        editor.tabSize: 4
+        editor.insertSpaces: true
+        editor.rulers: [88, 120]
+
+      python.defaultInterpreterPath: "${workspaceFolder}/.venv/bin/python"
+      python.formatting.provider: "none"
+      python.linting.enabled: true
+      python.linting.pylintEnabled: false
+      python.linting.ruffEnabled: true
+      python.analysis.typeCheckingMode: "basic"
+      python.analysis.autoImportCompletions: true
+
+      "[python]":
+        editor.defaultFormatter: "charliermarsh.ruff"
+        editor.codeActionsOnSave:
+          source.fixAll.ruff: "explicit"
+          source.organizeImports.ruff: "explicit"
+
+    required_extensions:
+      - "ms-python.python"
+      - "charliermarsh.ruff"
+
+    recommended_extensions:
+      - "ms-python.mypy-type-checker"
+      - "ms-python.vscode-pylance"
+      - "njpwerner.autodocstring"
+
+    tasks:
+      - label: "Python: Run"
+        type: "shell"
+        command: "python"
+        args: ["${file}"]
+        group: "build"
+
+      - label: "Python: Test (pytest)"
+        type: "shell"
+        command: "python"
+        args: ["-m", "pytest", "--tb=short"]
+        group:
+          kind: "test"
+          isDefault: true
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Python: Test with Coverage"
+        type: "shell"
+        command: "python"
+        args: ["-m", "pytest", "--cov", "--cov-report=term-missing", "-m", "not slow"]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Python: Lint (ruff)"
+        type: "shell"
+        command: "python"
+        args: ["-m", "ruff", "check", "."]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Python: Format (ruff)"
+        type: "shell"
+        command: "python"
+        args: ["-m", "ruff", "format", "."]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Python: Type Check (mypy)"
+        type: "shell"
+        command: "python"
+        args: ["-m", "mypy", "."]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+    launch_configurations:
+      - name: "Python: Launch Current File"
+        type: "python"
+        request: "launch"
+        program: "${file}"
+        console: "integratedTerminal"
+
+      - name: "Python: Pytest"
+        type: "python"
+        request: "launch"
+        module: "pytest"
+        args: ["--tb=short"]
+        console: "integratedTerminal"
+        cwd: "${workspaceFolder}"
+
+    linting:
+      enabled: true
+      tools:
+        - "ruff"
+        - "mypy"
+      config_files:
+        - "pyproject.toml"
+        - "ruff.toml"
+        - ".mypy.ini"
+
+    package_management:
+      tool: "pip"
+      venv: ".venv"
+      config_files:
+        - "pyproject.toml"
+        - "requirements.txt"
+        - "requirements-dev.txt"

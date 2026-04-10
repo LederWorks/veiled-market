@@ -1,0 +1,29 @@
+---
+applyTo: "**"
+---
+
+# IDE-Agnostic Development Guidelines
+
+## Universal Practices
+- Use the terminal/shell tools when available for file operations
+- Prefer reading existing files before creating new ones
+- Always validate changes before committing
+
+## Editor Integrations
+{% if 'vscode' in enabled_ides or 'copilot_cli' in enabled_ides %}
+### VS Code
+- Workspace settings: `.vscode/settings.json`
+- Extensions: `.vscode/extensions.json`
+- Tasks: `.vscode/tasks.json`
+{% endif %}
+{% if 'claude_code' in enabled_ides %}
+### Claude Code
+- Rules: `.claude/rules/`
+- Project context: `CLAUDE.md`
+- MCP config: `.claude/mcp.json`
+{% endif %}
+
+## File Organization
+- Keep configuration files in their standard locations
+- Use `.config/` for project-level AI tool configuration
+- Do not duplicate settings across multiple config files

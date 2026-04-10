@@ -1,0 +1,70 @@
+{#
+  Template: Azure instruction stub
+  Output:   .github/instructions/azure.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*.bicep,**/*.json,**/*.tf,**/*.tfvars,**/*.yaml,**/*.yml"
+---
+
+# Azure Infrastructure Instructions
+
+You are working in an Azure-centric environment. Apply these conventions when generating or modifying any infrastructure code.
+
+## Naming (Cloud Adoption Framework)
+
+Format: `<resource-abbr>-<workload>-<environment>-<region-short>[-<instance>]`
+
+| Resource | Abbreviation | Notes |
+|---|---|---|
+| Resource Group | `rg-` | |
+| Virtual Network | `vnet-` | |
+| Storage Account | `st` | No hyphens, ≤ 24 chars, lowercase only |
+| Key Vault | `kv-` | |
+| AKS Cluster | `aks-` | |
+| Container Registry | `cr` | No hyphens |
+| Service Bus | `sb-` | |
+| App Service Plan | `asp-` | |
+
+Environments: `prod`, `staging`, `dev`
+Region short codes: `westeu`, `northeu`, `eastus`
+
+## Required tags (every resource)
+
+```
+Environment: prod | staging | dev
+Owner:       <team-email>@domain.com
+CostCenter:  <cost-center-code>
+ManagedBy:   terraform | bicep | manual
+```
+
+## Security defaults
+
+- **Managed Identity** over service principals or connection string secrets
+- **Private Endpoints** for all PaaS services in production (Storage, Key Vault, SQL, Cosmos, Service Bus, ACR)
+- **Key Vault**: `enablePurgeProtection: true`, `softDeleteRetentionInDays: 90`, `enableRbacAuthorization: true`
+- **Storage**: `minimumTlsVersion: TLS1_2`, `allowBlobPublicAccess: false`, `supportsHttpsTrafficOnly: true`
+- **NSG rules**: No `0.0.0.0/0` source without explicit justification; use application security groups
+- **Never hardcode secrets** — Key Vault reference or environment variable only
+
+## Terraform AzureRM specifics
+
+- Pin to `~> 3.x` (v4 is a breaking migration — plan separately)
+- `prevent_destroy = true` on resource groups and key vaults in production
+- Remote backend: `backend "azurerm"` with state locking via blob lease
+- Use `azurerm_role_assignment` with Managed Identity `principal_id` for RBAC
+
+## AKS / Kubernetes
+
+- CPU and memory requests **and** limits on every container
+- `runAsNonRoot: true`, `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false`
+- `capabilities: drop: ["ALL"]` in every security context
+- Default-deny NetworkPolicy per namespace
+- No `:latest` image tags — pin to digest or semver
+
+## Azure DevOps pipelines
+
+- Variable groups linked to Key Vault for secrets
+- Pin task versions (e.g., `AzureCLI@2`, not `@latest`)
+- Templates in `templates/` for reusable stages/jobs
+- Environments with approval gates for production deployments
