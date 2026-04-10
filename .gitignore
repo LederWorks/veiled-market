@@ -30,3 +30,6 @@ Thumbs.db
 
 # CI artifacts
 /tmp/
+
+# Git worktrees
+.worktrees/
