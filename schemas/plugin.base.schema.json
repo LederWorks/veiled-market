@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/LederWorks/veiled-market/main/schemas/plugin.base.schema.json",
+  "title": "Plugin Base Manifest",
+  "description": "Platform-neutral source manifest living in plugins/<name>/commons/plugin.base.json. build-platforms.py reads this and generates platform-specific plugin.json files in plugins/<name>/claude/ and plugins/<name>/copilot/.",
+  "type": "object",
+  "required": ["name", "version", "license"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema":     { "type": "string" },
+    "name":        { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 64 },
+    "description": { "type": "string", "maxLength": 300 },
+    "version":     { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "author": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name":  { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "url":   { "type": "string", "format": "uri" }
+      }
+    },
+    "homepage":   { "type": "string", "format": "uri" },
+    "repository": { "type": "string", "format": "uri" },
+    "license":    { "type": "string" },
+    "keywords":   { "type": "array", "items": { "type": "string" } },
+    "category":   { "type": "string" },
+    "categories": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["AI Agents","Coding","Data","DevOps","Marketing","Media","Other","Productivity","Security","Writing"]
+      }
+    },
+    "tags":       { "type": "array", "items": { "type": "string" } },
+    "agents":     { "type": "string", "description": "Relative path to agents/ directory. Always 'agents/'." },
+    "skills":     { "type": "string", "description": "Relative path to skills/ directory. Always 'skills/'." },
+    "commands":   { "type": "string", "description": "Relative path to commands/ directory. Always 'commands/'." },
+    "hooks":      { "type": "string", "description": "Relative path to hooks.json. Always 'hooks.json'." },
+    "mcpServers": { "type": "string", "description": "Relative path to .mcp.json. Always '.mcp.json'." }
+  }
+}

@@ -36,6 +36,11 @@ _MARKETPLACE_SCHEMA = {
     ".github/plugin/marketplace.json":  "../../schemas/marketplace.schema.json",
     ".claude-plugin/marketplace.json":  "../schemas/marketplace.schema.json",
 }
+# Platform identifier for each marketplace output file
+_MARKETPLACE_PLATFORM = {
+    ".github/plugin/marketplace.json":  "copilot",
+    ".claude-plugin/marketplace.json":  "claude",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -284,13 +289,24 @@ def update_marketplace(plugin: str) -> None:
 def _write_marketplace_files(registry: dict) -> None:
     """Regenerate both marketplace.json files from sources/plugins.json.
 
-    The output schema is identical for both files; only the $schema relative
-    path differs because the files sit at different depths in the tree.
+    If a plugin entry contains a ``platform_sources`` field, the matching
+    platform's path is used as ``source`` and ``platform_sources`` is stripped
+    from the output.  Plugins without ``platform_sources`` are written verbatim.
     """
+    import copy
     mp_info = registry.get("marketplace", {})
     plugins_list = registry.get("plugins", [])
 
     for mp_path in MARKETPLACE_PATHS:
+        platform = _MARKETPLACE_PLATFORM.get(mp_path)
+        output_plugins = []
+        for plugin in plugins_list:
+            entry = copy.deepcopy(plugin)
+            ps = entry.pop("platform_sources", None)
+            if ps and platform and platform in ps:
+                entry["source"] = ps[platform]
+            output_plugins.append(entry)
+
         output: dict = {}
         if mp_path in _MARKETPLACE_SCHEMA:
             output["$schema"] = _MARKETPLACE_SCHEMA[mp_path]
@@ -298,7 +314,7 @@ def _write_marketplace_files(registry: dict) -> None:
         output["owner"] = mp_info.get("owner", {})
         if "metadata" in mp_info:
             output["metadata"] = mp_info["metadata"]
-        output["plugins"] = plugins_list
+        output["plugins"] = output_plugins
 
         os.makedirs(os.path.dirname(mp_path), exist_ok=True)
         with open(mp_path, "w") as f:
@@ -311,12 +327,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Finalize a plugin from drafts/ to plugins/")
     parser.add_argument("--plugin", default=os.environ.get("plugin", ""),
                         help="plugin name (e.g. terraformer)")
-    parser.add_argument("--step", choices=["version", "promote", "marketplace", "all"],
+    parser.add_argument("--step", choices=["version", "promote", "marketplace", "regen", "all"],
                         default="all",
                         help="Which step to run (default: all)")
     args = parser.parse_args()
 
-    if not args.plugin:
+    if not args.plugin and args.step != "regen":
         print("[error] --plugin or plugin env var is required.", file=sys.stderr)
         sys.exit(1)
 
@@ -328,6 +344,14 @@ def main() -> None:
 
     if args.step in ("marketplace", "all"):
         update_marketplace(args.plugin)
+
+    if args.step == "regen":
+        if not os.path.exists(PLUGINS_REGISTRY):
+            print(f"[error] Plugins registry not found: {PLUGINS_REGISTRY}", file=sys.stderr)
+            sys.exit(1)
+        with open(PLUGINS_REGISTRY) as f:
+            registry = json.load(f)
+        _write_marketplace_files(registry)
 
 
 if __name__ == "__main__":

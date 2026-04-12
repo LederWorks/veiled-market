@@ -1,0 +1,169 @@
+{#
+  Template: .gitignore
+  Output:   .gitignore
+  Scope:    atlas (target repo generation — requires 'git' in enabled_platforms)
+  Required: detected_languages (list[str])
+  Optional: (none)
+
+  Renders OS, editor, secrets, and per-language ignore patterns.
+  Language keys match templates/languages/<lang>.yaml.j2 names:
+    terraform, python, go, typescript, shell, powershell, java, rust
+#}
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE and editor files
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# Secrets and credentials — never commit these
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+credentials.json
+secrets.yaml
+
+{% if 'python' in detected_languages %}
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+wheels/
+*.egg-info/
+*.egg
+MANIFEST
+.installed.cfg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Type checking and linting
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+{% endif %}
+
+{% if 'typescript' in detected_languages %}
+# Node.js / TypeScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Cache
+.npm/
+.eslintcache
+{% endif %}
+
+{% if 'terraform' in detected_languages %}
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+terraform.rc
+.terraformrc
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+{% endif %}
+
+{% if 'go' in detected_languages %}
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+vendor/
+{% endif %}
+
+{% if 'java' in detected_languages %}
+# Java
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+target/
+.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
+{% endif %}
+
+{% if 'rust' in detected_languages %}
+# Rust
+target/
+Cargo.lock
+{% endif %}
+
+{% if 'shell' in detected_languages or 'powershell' in detected_languages %}
+# Scripts
+*.sh.bak
+{% endif %}
+
+# Build artefacts
+*.o
+*.a
+*.log
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+*.orig

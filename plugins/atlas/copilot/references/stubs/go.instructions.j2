@@ -1,0 +1,122 @@
+{#
+  Template: Go instruction stub
+  Output:   .github/instructions/go.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*.go,go.mod,go.sum"
+---
+
+# Go Development Standards
+
+Apply these conventions when generating or modifying Go code.
+
+## Code style
+
+```go
+// Use clear, descriptive function names with context as the first parameter
+func CreateResource(ctx context.Context, req CreateResourceRequest) (*Resource, error) {
+    ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+    defer cancel()
+
+    if err := req.Validate(); err != nil {
+        return nil, fmt.Errorf("invalid request: %w", err)
+    }
+    // ...
+}
+```
+
+## Error handling
+
+Always wrap errors with context using `%w`:
+
+```go
+if err != nil {
+    return nil, fmt.Errorf("failed to create resource %s: %w", req.Name, err)
+}
+```
+
+Never discard errors silently. Use `errors.Is` / `errors.As` for checking error types.
+
+## Interfaces and constructors
+
+Exported constructors return exported interface types, not unexported concrete types:
+
+```go
+// ✅ Good
+type ResourceStore interface {
+    Get(ctx context.Context, id string) (*Resource, error)
+    Create(ctx context.Context, r *Resource) error
+}
+
+func NewResourceStore(db *sql.DB) ResourceStore {
+    return &resourceStore{db: db}
+}
+
+// ❌ Bad — unexported return type
+func NewResourceStore(db *sql.DB) *resourceStore { ... }
+```
+
+## Unused parameters
+
+Prefix with `_` for interface-compliance parameters not yet used:
+
+```go
+func (s *Service) Handle(_ context.Context, req Request) Response {
+    return s.handleSync(req)
+}
+```
+
+Rename back to the original name once the parameter is actively used.
+
+## Imports
+
+Group and order imports: stdlib → third-party → internal. Use `goimports` on save.
+
+```go
+import (
+    "context"
+    "fmt"
+
+    "github.com/lib/pq"
+
+    "github.com/your-org/your-project/internal/config"
+)
+```
+
+Never import the same package twice (avoid duplicate blank imports).
+
+## Testing
+
+Use table-driven tests with `testify/assert`:
+
+```go
+func TestCreateResource(t *testing.T) {
+    tests := []struct {
+        name    string
+        req     CreateResourceRequest
+        wantErr bool
+    }{
+        {"valid request", CreateResourceRequest{Name: "test"}, false},
+        {"empty name", CreateResourceRequest{}, true},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            _, err := CreateResource(context.Background(), tt.req)
+            if tt.wantErr {
+                assert.Error(t, err)
+            } else {
+                assert.NoError(t, err)
+            }
+        })
+    }
+}
+```
+
+Test files live alongside the code they test (`foo_test.go` next to `foo.go`).
+
+## Module conventions
+
+- `go.mod` must specify a minimum Go version
+- Commit `go.sum` — do not add it to `.gitignore`
+- Use `go mod tidy` before committing dependency changes

@@ -1,0 +1,73 @@
+{#
+  Template: Scripts instruction stub
+  Output:   .github/instructions/scripts.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "scripts/**/*.ps1,scripts/**/*.sh,scripts/**/*.py"
+---
+
+# Script Development Standards
+
+Apply these conventions for all scripts. Scripts must ship as cross-platform pairs: `.sh` for macOS/Linux and `.ps1` for Windows. See `powershell.instructions.md` and `bash.instructions.md` for platform-specific patterns.
+
+## Cross-platform naming
+
+Every script must have both a `.sh` and `.ps1` variant with identical behaviour. Use the same base filename:
+
+```
+scripts/install.sh
+scripts/install.ps1
+scripts/update.sh
+scripts/update.ps1
+```
+
+## Standard parameters (both platforms)
+
+Support these parameters where applicable:
+
+| Purpose | Bash | PowerShell |
+|---------|------|------------|
+| Help text | `--help / -h` | `-Help` |
+| Verbose output | `--verbose / -v` | `-VerboseOutput` |
+| Skip dependency install/update | `--skip-install` | `-SkipInstall` |
+| Custom config file path | `--config / -c PATH` | `-Config <path>` |
+
+## Output format
+
+Use consistent prefixes and colour coding so CI logs are easy to scan:
+
+| Level | Prefix | Colour |
+|-------|--------|--------|
+| Info | `[INFO]` | Cyan |
+| Success | `[SUCCESS]` | Green |
+| Warning | `[WARNING]` | Yellow |
+| Error | `[ERROR]` | Red |
+
+## Error handling
+
+Scripts must exit immediately on failure:
+- Bash: `set -euo pipefail`
+- PowerShell: `$ErrorActionPreference = "Stop"`
+
+Always provide a clear error message before exiting with non-zero status.
+
+## Path handling
+
+Resolve all paths relative to the script file, not the working directory:
+- Bash: `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"`
+- PowerShell: `$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path`
+
+## Dependency management
+
+For scripts that install or update tools, implement a skip-install pattern:
+1. Check if the tool is already installed
+2. If installed and skip flag is not set → update to latest
+3. If not installed and skip flag is not set → install
+4. If skip flag is set and tool is missing → fail with clear message
+
+## Security
+
+- Never hardcode credentials, tokens, or subscription IDs
+- Validate all user-supplied path arguments before using them
+- Use `chmod +x` on all `.sh` files before committing

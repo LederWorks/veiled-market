@@ -1,0 +1,118 @@
+{#
+  Template: Cursor instruction stub
+  Output:   .github/instructions/cursor.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: ".cursor/**/*,.cursorignore,.cursorrules"
+---
+
+# Cursor IDE Configuration Standards
+
+Apply these conventions when creating or modifying Cursor IDE configuration files and AI assistant settings.
+
+## Rules File
+
+Use `.cursor/rules/` for project-specific AI instructions. Each rule file should focus on a single concern:
+
+```
+.cursor/
+├── rules/
+│   ├── project.mdc        # General project context and conventions
+│   ├── architecture.mdc   # Architecture decisions and constraints
+│   └── testing.mdc        # Test patterns and requirements
+```
+
+Rule files use MDC format with YAML frontmatter for metadata:
+
+```markdown
+---
+description: Project conventions for the backend API
+globs: src/api/**/*.ts
+alwaysApply: false
+---
+
+# API Conventions
+
+- Use Express.js router pattern with controller separation
+- Validate all request bodies with Zod schemas
+- Return consistent error response format: { error: string, code: number }
+```
+
+## Frontmatter Fields
+
+| Field | Purpose |
+|-------|---------|
+| `description` | When this rule should be used — Cursor matches on this text |
+| `globs` | File patterns that trigger this rule automatically |
+| `alwaysApply` | If `true`, rule is always included in context |
+
+## MCP Configuration
+
+Cursor reads MCP server configuration from `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Never hardcode tokens in the MCP config — use environment variable references.
+
+## .cursorignore
+
+Use `.cursorignore` to exclude files from Cursor's AI indexing. Follows `.gitignore` syntax:
+
+```gitignore
+# Large generated files
+dist/
+node_modules/
+*.min.js
+*.min.css
+
+# Sensitive files
+.env
+.env.*
+*.pem
+*.key
+
+# Binary assets
+*.png
+*.jpg
+*.woff2
+```
+
+Keep the ignore list lean — only exclude files that add noise to AI context or contain sensitive data.
+
+## What to Commit
+
+**Commit these files:**
+
+- `.cursor/rules/*.mdc` — shared project rules
+- `.cursor/mcp.json` — MCP server configuration (without secrets)
+- `.cursorignore` — AI indexing exclusions
+
+**Add to `.gitignore`:**
+
+```gitignore
+.cursor/cache/
+.cursor/logs/
+.cursor/prompts/
+```
+
+## Relationship to Other AI Config Files
+
+Cursor rules complement but do not replace repository-level AI context files:
+
+- `.github/copilot-instructions.md` — GitHub Copilot CLI context (read by Copilot)
+- `.cursor/rules/` — Cursor-specific rules (read by Cursor only)
+
+Avoid duplicating content across these files. Keep shared standards in `.github/copilot-instructions.md` and use Cursor rules for IDE-specific behavior and file-pattern-scoped instructions.

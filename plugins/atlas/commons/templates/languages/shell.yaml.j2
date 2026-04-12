@@ -1,0 +1,100 @@
+{#
+  Template: Shell Script Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/shell.yaml.j2
+#}
+languages:
+  shell:
+    file_associations:
+      "*.sh": "shellscript"
+      "*.bash": "shellscript"
+      "*.zsh": "shellscript"
+      "*.fish": "fish"
+      ".bashrc": "shellscript"
+      ".zshrc": "shellscript"
+      ".profile": "shellscript"
+      "*.env": "dotenv"
+
+    settings:
+      "[shellscript]":
+        editor.formatOnSave: true
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.wordWrap: "on"
+        editor.rulers: [80, 120]
+
+      "[fish]":
+        editor.tabSize: 2
+        editor.insertSpaces: true
+
+      shellcheck.enable: true
+      shellcheck.executablePath: "shellcheck"
+      shellformat.effectLanguages:
+        - "shellscript"
+        - "fish"
+      shellformat.flag: "-i 2"
+
+    required_extensions:
+      - "timonwong.shellcheck"
+      - "foxundermoon.shell-format"
+
+    recommended_extensions:
+      - "ms-vscode.vscode-json"
+      - "redhat.vscode-yaml"
+      - "bmalehorn.vscode-fish"
+
+    tasks:
+      - label: "Shell: Check Syntax (shellcheck)"
+        type: "shell"
+        command: "shellcheck"
+        args: ["${file}"]
+        group: "test"
+        problemMatcher: "$shellcheck"
+
+      - label: "Shell: Check All Scripts"
+        type: "shell"
+        command: "bash"
+        args: ["-c", "find . -name '*.sh' -o -name '*.bash' | xargs shellcheck"]
+        group: "test"
+        problemMatcher: "$shellcheck"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Shell: Format Current File"
+        type: "shell"
+        command: "shfmt"
+        args: ["-w", "-i", "2", "${file}"]
+        group: "build"
+
+      - label: "Shell: Format All Scripts"
+        type: "shell"
+        command: "bash"
+        args: ["-c", "find . -name '*.sh' | xargs shfmt -w -i 2"]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+    launch_configurations:
+      - name: "Shell: Launch Current File"
+        type: "node"
+        request: "launch"
+        program: "/bin/bash"
+        args: ["${file}"]
+        cwd: "${workspaceFolder}"
+        console: "integratedTerminal"
+
+    linting:
+      enabled: true
+      tools:
+        - "shellcheck"
+        - "shfmt"
+      config_files:
+        - ".shellcheckrc"
+
+    package_management:
+      tool: "homebrew"
+      config_files:
+        - "Brewfile"
+        - "install.sh"

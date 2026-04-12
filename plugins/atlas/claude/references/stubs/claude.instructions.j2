@@ -1,0 +1,27 @@
+---
+applyTo: "**"
+---
+
+# Claude Code Conventions
+
+## Memory and Context
+- Project context is in `CLAUDE.md` at the repo root
+- Rule files live in `.claude/rules/` (loaded automatically)
+- Never read `CLAUDE.md` manually — Claude Code loads it on session start
+
+## MCP Servers
+{% if mcp_servers %}
+Configured MCP servers: {{ mcp_servers | join(', ') }}
+{% else %}
+No MCP servers configured. Add them to `.claude/mcp.json` with the `"mcpServers"` key.
+{% endif %}
+
+## File Writing
+- Use `Write` tool for new files
+- Use `Edit` tool (string replacement) for existing files — never overwrite large files
+- Prefer `TodoWrite` for multi-step tasks to track progress
+
+## Code Style
+- Follow existing patterns in the codebase
+- Match indentation and naming conventions of surrounding code
+- Do not add comments explaining what code does — code should be self-documenting

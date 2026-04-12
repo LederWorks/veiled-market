@@ -1,0 +1,181 @@
+{#
+  Template: Jinja2 instruction stub
+  Output:   .github/instructions/jinja2.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*.j2,**/*.jinja,**/*.jinja2,templates/**/*"
+---
+
+# Jinja2 Template Development Standards
+
+Apply these conventions when generating or modifying Jinja2 templates.
+
+---
+
+## Template header
+
+Every template must begin with a comment describing its purpose and expected variables:
+
+```jinja2
+{#
+  Template: VS Code Extensions Configuration
+  Output:   .vscode/extensions.json
+  Required: extensions (list[str])
+  Optional: debug_mode (bool, default false)
+#}
+```
+
+---
+
+## Indentation and formatting
+
+- Use 2-space indentation for template logic
+- Place Jinja2 block tags on their own lines when they contain multi-line content
+- Use trailing commas in all JSON array templates — eliminates conditional comma logic
+
+```jinja2
+{# ✅ Good: trailing commas, consistent indentation #}
+{
+  "recommendations": [
+{% for ext in extensions %}
+    "{{ ext }}",
+{% endfor %}
+  ]
+}
+
+{# ❌ Bad: conditional comma logic is error-prone #}
+{% for ext in extensions %}
+    "{{ ext }}"{% if not loop.last %},{% endif %}
+{% endfor %}
+```
+
+---
+
+## Variable safety
+
+Always provide defaults for optional variables. Never access a variable without a guard when it may be undefined:
+
+```jinja2
+{# Safe access #}
+{{ config.description | default("Auto-generated configuration") }}
+
+{# Conditional rendering #}
+{% if deployment_platform is defined and deployment_platform %}
+"deploymentPlatform": "{{ deployment_platform }}",
+{% endif %}
+
+{# Safe list operations #}
+{% set extensions = config.extensions | default([]) %}
+{% for ext in extensions %}
+    "{{ ext }}",
+{% endfor %}
+```
+
+---
+
+## Type filters
+
+Use proper Jinja2 filters to handle data types in JSON/YAML output:
+
+```jinja2
+{# Strings — escape with tojson #}
+"description": {{ task.description | tojson }},
+
+{# Booleans — lowercase #}
+"enabled": {{ config.enabled | lower }},
+
+{# Numbers — explicit cast #}
+"port": {{ config.port | int }},
+
+{# JSON objects — tojson for inline serialisation #}
+"settings": {{ config.settings | tojson }},
+```
+
+---
+
+## Reusable macros
+
+Define macros for patterns used more than once:
+
+```jinja2
+{% macro extension_list(items) %}
+[
+{% for item in items %}
+  "{{ item }}",
+{% endfor %}
+]
+{% endmacro %}
+
+"required":    {{ extension_list(config.required_extensions) }},
+"recommended": {{ extension_list(config.recommended_extensions) }},
+```
+
+---
+
+## Security
+
+- **Never** pass user-controlled input directly into template logic
+- Sanitise file path variables to prevent traversal:
+
+```jinja2
+{# Safe path — strip traversal sequences #}
+"configPath": "{{ config_path | replace('..', '') | trim }}",
+```
+
+- Use `{{ value | tojson }}` for any string originating from user input to ensure proper JSON escaping
+- Do not use `eval` or dynamic template path loading with user-supplied values
+
+---
+
+## Null and error handling
+
+```jinja2
+{# Null-safe array rendering #}
+{% if config and config.extensions %}
+"extensions": [
+{% for ext in config.extensions %}
+  "{{ ext }}",
+{% endfor %}
+]
+{% else %}
+"extensions": []
+{% endif %}
+
+{# Type guard before iteration #}
+{% if config.tasks is iterable and config.tasks is not string %}
+{% for task in config.tasks %}
+    {# process task #}
+{% endfor %}
+{% endif %}
+```
+
+---
+
+## Pre-calculation pattern
+
+Cache expensive or repeated computations outside loops:
+
+```jinja2
+{# Pre-calculate once, reuse throughout #}
+{% set has_python  = 'python' in languages %}
+{% set has_testing = config.testing_framework is defined %}
+{% set filtered    = languages | selectattr('enabled') | list %}
+
+{% if has_python and has_testing %}
+  {# Python testing configuration #}
+{% endif %}
+```
+
+---
+
+## Quality checklist
+
+Before committing a template:
+
+- [ ] Header comment documents output file, required, and optional variables
+- [ ] All arrays use trailing commas (not `{% if not loop.last %}`)
+- [ ] All optional variables have `| default(...)` fallbacks
+- [ ] All user-derived strings pass through `| tojson` or `| replace`
+- [ ] Generated output is valid JSON/YAML after rendering
+- [ ] Tested with empty input, single-element, and multi-element collections

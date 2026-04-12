@@ -1,0 +1,24 @@
+{#
+  Template: .config/atlas.json
+  Output:   .config/atlas.json
+  Scope:    atlas (written on init and updated on each atlas update)
+
+  Central state store for the atlas plugin. Records all configuration choices
+  made during init/update so subsequent commands can read them without prompting.
+
+  Required: enabled_ides (list[str])
+            enabled_platforms (list[str])
+            languages (list[str])
+            git_mode (str)
+            updated_at (str, ISO 8601 datetime)
+  Optional: mcp_servers (list) — default []
+#}
+{
+  "version": "1.0",
+  "enabled_ides": {{ enabled_ides | tojson }},
+  "enabled_platforms": {{ enabled_platforms | tojson }},
+  "languages": {{ languages | tojson }},
+  "git_mode": "{{ git_mode }}",
+  "mcp_servers": {{ mcp_servers | default([]) | tojson }},
+  "updated_at": "{{ updated_at }}"
+}

@@ -1,0 +1,166 @@
+{#
+  Template: Aws instruction stub
+  Output:   .github/instructions/aws.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*"
+---
+
+# AWS Development Standards
+
+Apply these conventions when generating or reviewing AWS infrastructure code and application configurations.
+
+---
+
+## Resource naming
+
+Use consistent, descriptive naming across all AWS resources:
+
+```
+<workload>-<environment>-<resource-type>[-<qualifier>]
+```
+
+Examples: `payments-prod-sg-web`, `data-staging-rds-primary`, `auth-dev-lambda-tokenizer`.
+
+Respect AWS per-service naming constraints (S3 bucket names are globally unique and must be lowercase).
+
+---
+
+## Tagging strategy
+
+Tag every resource. Minimum required tags:
+
+| Tag | Values |
+|---|---|
+| `Environment` | `prod`, `staging`, `dev` |
+| `Project` | workload name |
+| `Owner` | team or squad |
+| `CostCenter` | billing code |
+| `ManagedBy` | `terraform`, `cdk`, `cloudformation` |
+
+Enforce tagging via AWS Config rules or Service Control Policies (SCPs).
+
+---
+
+## IAM and access control
+
+- Follow **least privilege** — grant only permissions required for the specific task
+- Use **IAM roles** for programmatic access; avoid long-lived IAM user keys
+- Use **AWS managed policies** when sufficient; document business justification for custom policies
+- Require **MFA** for all console users
+- Never use the root account for operations; disable root access keys immediately
+
+```json
+{
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::my-bucket/*",
+      "Condition": {
+        "StringEquals": { "aws:RequestedRegion": "eu-central-1" }
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Secrets management
+
+- Store credentials in **AWS Secrets Manager** (rotation-capable) or **SSM Parameter Store** (simple config)
+- Never hardcode secrets in templates, environment variables, or code
+- Enable automatic rotation for database credentials
+
+```hcl
+# Terraform — reference an existing secret
+data "aws_secretsmanager_secret_version" "db" {
+  secret_id = "prod/myapp/db-credentials"
+}
+```
+
+---
+
+## Encryption
+
+- Encryption at rest: use **AWS KMS** customer-managed keys (CMKs) for sensitive workloads; AWS-managed keys for standard workloads
+- Encryption in transit: enforce TLS 1.2+ on all endpoints
+- Enable automatic key rotation on CMKs
+- Use `aws:SecureTransport` condition on S3 bucket policies
+
+---
+
+## Networking
+
+- Deploy into a **VPC** with private subnets for workloads; public subnets only for load balancers and NAT gateways
+- Use **Security Groups** as the primary control; use NACLs as a secondary defence layer
+- Use **VPC Endpoints** for AWS service access (S3, DynamoDB, Secrets Manager) to avoid traffic traversing the public internet
+- Restrict `0.0.0.0/0` ingress to port 443 on public-facing security groups only
+
+---
+
+## Compute
+
+- Always use **multiple Availability Zones** for production workloads
+- Define **Auto Scaling groups** for EC2 and ECS services; rely on managed scaling for Lambda
+- Right-size instances using **AWS Compute Optimizer** recommendations
+- Use **Spot Instances** for fault-tolerant and batch workloads to reduce cost
+
+---
+
+## Storage (S3)
+
+- Enable **versioning** on buckets containing application state or artefacts
+- Set a **lifecycle policy** to transition old versions to cheaper storage classes
+- Block all public access by default:
+
+```hcl
+resource "aws_s3_bucket_public_access_block" "this" {
+  bucket                  = aws_s3_bucket.this.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+```
+
+---
+
+## Terraform on AWS
+
+- Store Terraform state in **S3 with DynamoDB locking**
+- Use **IAM roles** for provider authentication (not access keys)
+- Import pre-existing resources before managing them with Terraform
+- Module structure: follow the standard [Terraform module structure](../terraform.instructions.md)
+
+```hcl
+terraform {
+  backend "s3" {
+    bucket         = "myorg-terraform-state"
+    key            = "myapp/prod/terraform.tfstate"
+    region         = "eu-central-1"
+    dynamodb_table = "terraform-state-lock"
+    encrypt        = true
+  }
+}
+```
+
+---
+
+## Observability
+
+- Enable **CloudTrail** in all regions — log to a dedicated security account
+- Enable **AWS Config** for resource compliance monitoring
+- Use **CloudWatch** alarms for compute, database, and API health metrics
+- Integrate with **AWS Security Hub** for centralised findings
+
+---
+
+## Cost management
+
+- Apply **cost allocation tags** and review Cost Explorer weekly
+- Configure **Budgets** with alerting before reaching thresholds
+- Use **Savings Plans** or **Reserved Instances** for stable, predictable workloads
+- Run AWS Trusted Advisor checks monthly

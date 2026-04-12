@@ -1,0 +1,106 @@
+{#
+  Template: Go Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/go.yaml.j2
+#}
+languages:
+  go:
+    file_associations:
+      "*.go": "go"
+      "go.mod": "go.mod"
+      "go.sum": "go.sum"
+
+    settings:
+      "[go]":
+        editor.formatOnSave: true
+        editor.tabSize: 4
+        editor.insertSpaces: false
+
+      go.useLanguageServer: true
+      go.formatTool: "goimports"
+      go.lintTool: "golangci-lint"
+
+    required_extensions:
+      - "golang.go"
+
+    tasks:
+      - label: "Go: Build"
+        type: "shell"
+        command: "go"
+        args: ["build", "./..."]
+        group:
+          kind: "build"
+          isDefault: true
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Go: Test"
+        type: "shell"
+        command: "go"
+        args: ["test", "./...", "-v"]
+        group:
+          kind: "test"
+          isDefault: true
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Go: Test with Coverage"
+        type: "shell"
+        command: "go"
+        args: ["test", "./...", "-coverprofile=coverage.out"]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Go: Lint (golangci-lint)"
+        type: "shell"
+        command: "golangci-lint"
+        args: ["run"]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Go: Run"
+        type: "shell"
+        command: "go"
+        args: ["run", "."]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "Go: Tidy"
+        type: "shell"
+        command: "go"
+        args: ["mod", "tidy"]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+    launch_configurations:
+      - name: "Go: Launch Package"
+        type: "go"
+        request: "launch"
+        mode: "auto"
+        program: "${workspaceFolder}"
+
+      - name: "Go: Launch Test"
+        type: "go"
+        request: "launch"
+        mode: "test"
+        program: "${workspaceFolder}"
+        args: ["-test.v"]
+
+    linting:
+      enabled: true
+      tools:
+        - "golangci-lint"
+      config_files:
+        - ".golangci.yml"
+
+    package_management:
+      tool: "go mod"
+      config_files:
+        - "go.mod"
+        - "go.sum"

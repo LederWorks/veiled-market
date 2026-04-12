@@ -1,0 +1,40 @@
+{# Rendered only when vscode is in enabled_ides #}
+{#
+  Template: <project_name>.code-workspace
+  Output:   {{ project_name }}.code-workspace
+  Scope:    project (target repo generation — requires 'vscode' in enabled_platforms)
+  Required: project_name (str)
+  Optional: workspace_folders (list[str]) — additional folder paths relative to project root
+            workspace_extensions (list[str]) — additional extension recommendations
+            workspace_settings (dict) — workspace-level VS Code settings overrides
+
+  workspace_extensions and workspace_settings are sourced from .config/workspace.yaml
+  (extra_extensions and extra_settings fields respectively).
+  The primary folder is always the project root (".").
+#}
+{%- set has_ext = workspace_extensions is defined and workspace_extensions %}
+{%- set has_cfg = workspace_settings is defined and workspace_settings %}
+{%- set has_fld = workspace_folders is defined and workspace_folders %}
+{
+  "folders": [
+    {
+      "name": "{{ project_name }}",
+      "path": "."
+    }{% if has_fld %}{% for folder in workspace_folders %},
+    {
+      "path": "{{ folder }}"
+    }{% endfor %}{% endif %}
+
+  ]{% if has_cfg or has_ext %},
+  {% if has_cfg %}"settings": {{ workspace_settings | tojson }}{% if has_ext %},
+  {% endif %}{% endif %}{% if has_ext %}"extensions": {
+    "recommendations": [
+{%- set ns = namespace(sep="") %}
+{% for ext in workspace_extensions %}
+      {{ ns.sep }}"{{ ext }}"
+{%- set ns.sep = "," %}
+{% endfor %}
+    ]
+  }{% endif %}{% endif %}
+
+}

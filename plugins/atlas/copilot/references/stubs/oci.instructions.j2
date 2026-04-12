@@ -1,0 +1,162 @@
+{#
+  Template: Oci instruction stub
+  Output:   .github/instructions/oci.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*"
+---
+
+# Oracle Cloud Infrastructure (OCI) Development Standards
+
+Apply these conventions when generating or reviewing OCI infrastructure code and application configurations.
+
+---
+
+## Tenancy and compartment structure
+
+Follow the standard OCI hierarchy: **Root Compartment → Sub-Compartments → Resources**.
+
+Design compartments around business units, environments, or projects. Use compartments for isolation, access control, and cost tracking. Name compartments using `kebab-case`:
+
+```
+root/
+├── shared-services/
+├── production/
+│   ├── networking
+│   ├── compute
+│   └── databases
+└── staging/
+```
+
+---
+
+## Resource naming
+
+```
+<workload>-<environment>-<resource-type>[-<qualifier>]
+```
+
+Examples: `payments-prod-vcn`, `data-staging-adb-primary`, `auth-dev-fn-tokenizer`.
+
+Observe OCI per-service naming constraints (Object Storage bucket names are unique per namespace).
+
+---
+
+## Tagging strategy
+
+Apply defined tags to all resources. Minimum required:
+
+| Tag | Values |
+|---|---|
+| `Environment` | `prod`, `staging`, `dev` |
+| `Project` | workload name |
+| `Owner` | team or squad |
+| `CostCenter` | billing code |
+| `ManagedBy` | `terraform`, `oci-cli` |
+
+Enforce tagging via OCI Tag Defaults and Governance Rules.
+
+---
+
+## IAM and access control
+
+- Follow **least privilege** — use pre-defined policies when sufficient; document custom policy decisions
+- Use **groups** rather than individual user assignments
+- Leverage **dynamic groups** and **instance principals** for compute-to-service access — avoid API key usage in instances
+- Require **MFA** for all console users
+- Use **Identity Domains** for user lifecycle management in enterprise environments
+
+```hcl
+resource "oci_identity_policy" "app" {
+  name           = "app-read-secrets"
+  description    = "Allow app instances to read Vault secrets"
+  compartment_id = var.compartment_id
+  statements = [
+    "Allow dynamic-group ${oci_identity_dynamic_group.app.name} to read secret-bundles in compartment ${var.compartment_name}"
+  ]
+}
+```
+
+---
+
+## Secrets management
+
+- Use **OCI Vault** for all secrets, API keys, and credentials
+- Use **secret bundles** and rotate secrets on a defined schedule
+- Access vault secrets from instances via instance principal — never hardcode in configuration
+
+---
+
+## Networking
+
+- Deploy workloads in a **Virtual Cloud Network (VCN)** with private subnets; use **NAT Gateway** for outbound internet access
+- Use **Security Lists** and **Network Security Groups (NSGs)**; prefer NSGs for application-specific rules
+- Use **Service Gateway** for access to Oracle services without traversing the internet
+- Use **FastConnect** or **IPSec VPN** for hybrid connectivity
+- Restrict `0.0.0.0/0` ingress to port 443 on public-facing NSGs only
+
+---
+
+## Encryption
+
+- Encryption at rest is on by default; use **customer-managed keys** from OCI Vault KMS for sensitive workloads
+- Enforce TLS 1.2+ for all data in transit
+- Enable automatic key rotation policies in Vault
+
+---
+
+## Terraform on OCI
+
+- Store Terraform state in **OCI Object Storage** with versioning enabled
+- Authenticate via **instance principal** from CI/CD; use **API keys** only for local development
+- Use **OCI Resource Manager** stacks for teams that prefer a managed Terraform experience
+
+```hcl
+terraform {
+  backend "http" {
+    # OCI Object Storage state backend configured via environment variables
+    # OCI_OBJECT_STORAGE_NAMESPACE, OCI_BUCKET_NAME, OCI_OBJECT_NAME
+  }
+}
+
+provider "oci" {
+  region = var.region
+  # Auth via instance principal in CI; user principal locally
+}
+```
+
+---
+
+## Compute
+
+- Use appropriate shapes; review **E4 Flex** and **A1 Flex** for cost efficiency
+- Enable **autoscaling** on instance pools for variable workloads
+- Use **preemptible instances** for batch / fault-tolerant workloads
+- Always use multiple Availability Domains in production
+
+---
+
+## Database
+
+- Prefer **Autonomous Database** for new workloads (OLTP or DW)
+- Enable **Data Guard** for high availability on non-Autonomous databases
+- Configure automated backups with cross-region replication for production
+
+---
+
+## Observability
+
+- Enable **Cloud Guard** for comprehensive security posture monitoring
+- Use **OCI Audit** service for all API activity logging
+- Configure **Alarms** in OCI Monitoring for compute, database, and network metrics
+- Use **Logging Analytics** for centralised log management and anomaly detection
+
+---
+
+## Cost management
+
+- Use compartments and defined tags for cost attribution in **Cost Analysis**
+- Configure **Budgets** with alert thresholds
+- Use **Preemptible** and **Preemptible Capacity Reservations** for non-critical workloads
+- Review usage advisor recommendations monthly

@@ -1,0 +1,36 @@
+{
+  "name": "atlas",
+  "version": "1.0.0",
+  "description": "'Local workspace and project setup \u2014 init, update, and validate AI context files, IDE settings, and project scaffolding for both Copilot CLI and Claude Code.'",
+  "license": "MIT",
+  "author": {
+    "name": "Ledermayer"
+  },
+  "homepage": "https://github.com/LederWorks/veiled-market/tree/main/plugins/atlas",
+  "repository": "https://github.com/LederWorks/veiled-market",
+  "keywords": [
+    "workspace",
+    "project",
+    "setup",
+    "init",
+    "ide",
+    "scaffold",
+    "dual-platform"
+  ],
+  "category": "Coding",
+  "categories": [
+    "AI Agents",
+    "Coding"
+  ],
+  "tags": [
+    "devtools",
+    "workspace",
+    "scaffold",
+    "setup",
+    "ide"
+  ],
+  "agents": "agents/",
+  "skills": "skills/",
+  "commands": "commands/",
+  "hooks": "hooks.json"
+}

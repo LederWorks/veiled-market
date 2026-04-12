@@ -1,0 +1,59 @@
+{#
+  Template: Jinja2 Template Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/j2.yaml.j2
+#}
+languages:
+  j2:
+    file_associations:
+      "*.j2": "jinja"
+      "*.jinja": "jinja"
+      "*.jinja2": "jinja"
+      "*.html.j2": "jinja-html"
+
+    settings:
+      "[jinja]":
+        editor.formatOnSave: true
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.wordWrap: "on"
+        editor.wordWrapColumn: 100
+
+      jinja.lint.enabled: true
+      jinja.format.enabled: true
+
+    required_extensions:
+      - "wholroyd.jinja"
+
+    recommended_extensions:
+      - "ms-python.python"
+      - "redhat.vscode-yaml"
+      - "samuelcolvin.jinjahtml"
+
+    tasks:
+      - label: "Jinja2: Render Template"
+        type: "shell"
+        command: "jinja2"
+        args: ["${file}", "--format=yaml"]
+        group: "build"
+
+      - label: "Jinja2: Validate Syntax"
+        type: "shell"
+        command: "python"
+        args: ["-c", "import jinja2; jinja2.Template(open('${file}').read()); print('OK')"]
+        group: "test"
+
+      - label: "Jinja2: Lint (djlint)"
+        type: "shell"
+        command: "djlint"
+        args: ["${file}"]
+        group: "test"
+
+    linting:
+      enabled: true
+      tools:
+        - "djlint"
+      config_files:
+        - ".djlintrc"

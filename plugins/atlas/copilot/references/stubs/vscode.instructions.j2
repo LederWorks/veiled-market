@@ -1,0 +1,113 @@
+{#
+  Template: Vscode instruction stub
+  Output:   .github/instructions/vscode.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: ".vscode/**/*"
+---
+
+# VS Code Configuration Standards
+
+Apply these conventions when creating or modifying VS Code workspace configuration files.
+
+## settings.json
+
+Keep workspace settings minimal — only override defaults that are necessary for the project. Store in `.vscode/settings.json` and commit it.
+
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}
+```
+
+## tasks.json
+
+Define tasks for the most common developer operations. Use descriptive labels. Group related tasks with `"group"`:
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/build.sh",
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/test.sh",
+      "group": { "kind": "test", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    }
+  ]
+}
+```
+
+## extensions.json
+
+Only recommend extensions that are essential for working on this project. Avoid bloating the list with personal preferences:
+
+```json
+{
+  "recommendations": [
+    "golang.go",
+    "hashicorp.terraform",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode"
+  ]
+}
+```
+
+## launch.json
+
+Provide debug configurations for the main entry points. Use `${workspaceFolder}` for all paths:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/server",
+      "env": { "ENV": "development" }
+    }
+  ]
+}
+```
+
+## mcp.json
+
+VS Code MCP configuration for AI tool integrations. Store at `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+## What to gitignore
+
+Add `.vscode/settings.local.json` to `.gitignore` for personal overrides that should not be shared. Commit `.vscode/settings.json`, `tasks.json`, `extensions.json`, and `launch.json`.

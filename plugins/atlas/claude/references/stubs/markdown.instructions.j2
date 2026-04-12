@@ -1,0 +1,67 @@
+{#
+  Template: Markdown instruction stub
+  Output:   .github/instructions/markdown.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*.md,**/*.markdown"
+---
+
+# Markdown Writing Standards
+
+Apply these conventions when creating or editing any Markdown documentation.
+
+## Document structure
+
+- One H1 per document as the main title
+- Follow logical heading progression: H1 → H2 → H3 — never skip levels
+- Include a blank line before and after every heading
+- Include a blank line before and after every list or code block
+- For documents longer than 3 sections, add a table of contents with relative links
+
+## Headings
+
+Use ATX style (`#` symbols) not underline style. Title case for headings. Single space between `#` and text.
+
+```markdown
+## Good Heading
+
+Content starts here after blank line.
+```
+
+## Lists
+
+Use `-` for unordered lists consistently. Use 2-space indentation for nested items. Keep list items parallel in structure and concise.
+
+## Code blocks
+
+Always specify a language for fenced code blocks:
+
+```markdown
+```bash
+terraform init
+```
+```
+
+Use backticks for inline code, commands, file paths, and technical terms: `terraform init`, `main.tf`, `var.environment`.
+
+## Links
+
+Use descriptive link text — never "click here" or raw URLs:
+
+```markdown
+See [Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs).
+```
+
+Use relative paths for repository-internal links.
+
+## Tables
+
+Align column separators for readability. Include a header row. Keep cell content concise.
+
+## Quality rules
+
+- Verify all code examples are functional before committing
+- Check all internal links are valid relative paths
+- Line length should not exceed 120 characters
+- No trailing whitespace

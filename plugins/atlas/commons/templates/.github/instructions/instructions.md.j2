@@ -1,0 +1,21 @@
+{#- instructions.md.j2 — v1.1.0 -#}
+{#- Variables:
+     slug (string, required) — kebab-case identifier (e.g. "terraform", "go")
+     apply_to_glob (string, required) — glob pattern for applyTo frontmatter
+     title (string, required) — display title for the instruction set
+     sections (list[string], optional) — rendered content sections
+-#}
+---
+applyTo: "{{ apply_to_glob }}"
+---
+
+# {{ title }}
+
+Apply these conventions when generating or modifying files matched by `{{ apply_to_glob }}`.
+
+{% for section in sections %}
+## {{ section.heading }}
+
+{{ section.content }}
+
+{% endfor %}

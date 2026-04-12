@@ -1,0 +1,137 @@
+{#
+  Template: Azure-Devops instruction stub
+  Output:   .github/instructions/azure-devops.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "azure-pipelines.yml,azure-pipelines/**/*.yml,azure-pipelines/**/*.yaml,.azure-pipelines/**/*.yml,.azure-pipelines/**/*.yaml,pipelines/**/*.yml,pipelines/**/*.yaml"
+---
+
+# Azure DevOps Standards
+
+Apply these conventions when creating or modifying Azure DevOps pipeline definitions, repository configuration, and related files.
+
+## Pipeline Structure
+
+Use YAML pipelines (`azure-pipelines.yml`) over classic editor pipelines. Pin task versions to a specific major version:
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    exclude:
+      - '**/*.md'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - task: GoTool@0
+    inputs:
+      version: '1.22'
+  - script: go build ./...
+    displayName: 'Build'
+  - script: go test ./...
+    displayName: 'Test'
+```
+
+## Template Reuse
+
+Extract repeated job or step sequences into templates under a `pipelines/templates/` directory. Call with `template:`:
+
+```yaml
+stages:
+  - stage: Build
+    jobs:
+      - template: pipelines/templates/build-job.yml
+        parameters:
+          environment: 'dev'
+```
+
+## Variable Groups and Secrets
+
+Never hardcode tokens, passwords, or subscription IDs. Use variable groups linked from Azure Key Vault for secrets. Use pipeline variables for non-sensitive configuration:
+
+```yaml
+variables:
+  - group: 'my-keyvault-vars'
+  - name: buildConfiguration
+    value: 'Release'
+```
+
+Reference secrets with `$(variableName)` syntax. Mark secret variables with `issecret=true` in scripts:
+
+```yaml
+- script: |
+    echo "##vso[task.setvariable variable=MY_SECRET;issecret=true]$(secretFromKeyVault)"
+```
+
+## Environments and Approvals
+
+Use environments with approval gates for production deployments:
+
+```yaml
+stages:
+  - stage: DeployProd
+    jobs:
+      - deployment: deploy
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: echo "Deploying to production"
+```
+
+## Service Connections
+
+Reference service connections by name — never embed credentials directly:
+
+```yaml
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: 'my-service-connection'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az group list --output table
+```
+
+## Repository Policies
+
+Configure branch policies on `main`:
+
+- Require a minimum number of reviewers (at least 1)
+- Check for linked work items
+- Build validation with the CI pipeline
+- Enforce comment resolution before merge
+- Limit merge types to squash merge for a clean history
+
+## Pull Request Conventions
+
+PR titles should follow Conventional Commits: `type(scope): description`
+
+Valid types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`
+
+Include a work item link in the PR description using `AB#<id>` syntax.
+
+## Artifacts and Feeds
+
+Publish build artifacts with a descriptive name. Use Azure Artifacts feeds for internal package distribution:
+
+```yaml
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'drop'
+```
+
+## Security Practices
+
+- Enable credential scanning in the pipeline
+- Use `checkout: self` with `fetchDepth: 1` for faster shallow clones
+- Grant minimum required permissions to service connections
+- Rotate service connection credentials on a schedule
+- Audit pipeline variable access — avoid passing secrets to steps that do not need them

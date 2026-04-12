@@ -1,0 +1,60 @@
+{# Rendered only when copilot_cli is in enabled_ides AND github is in enabled_platforms #}
+{#
+  Template: GitHub Copilot CLI Project Hooks Configuration
+  Output:   .github/hooks/hooks.json
+  Required: (none — generates a minimal valid file when no hooks are defined)
+  Optional: hooks (object):
+              sessionStart       : list of { bash, powershell, cwd?, env?, timeoutSec? }
+              userPromptSubmitted: list of { bash, powershell, cwd?, env?, timeoutSec? }
+              preToolUse         : list of { bash, powershell, cwd?, env?, timeoutSec? }
+              postToolUse        : list of { bash, powershell, cwd?, env?, timeoutSec? }
+              errorOccurred      : list of { bash, powershell, cwd?, env?, timeoutSec? }
+              sessionEnd         : list of { bash, powershell, cwd?, env?, timeoutSec? }
+  Ref:      https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/use-hooks
+            https://docs.github.com/en/copilot/reference/hooks-configuration
+  Schema:   schemas/hooks.schema.json
+#}
+{%- set h = hooks | default({}) -%}
+{%- set session_start   = h.sessionStart        | default([]) -%}
+{%- set prompt_hooks    = h.userPromptSubmitted  | default([]) -%}
+{%- set pre_tool        = h.preToolUse           | default([]) -%}
+{%- set post_tool       = h.postToolUse          | default([]) -%}
+{%- set error_hooks     = h.errorOccurred        | default([]) -%}
+{%- set session_end     = h.sessionEnd           | default([]) -%}
+{%- macro render_hooks(hook_list) %}
+{% for item in hook_list %}
+      {
+        "type": "command",
+        "bash": {{ item.bash | tojson }},
+        "powershell": {{ item.powershell | tojson }}{% if item.cwd is defined %},
+        "cwd": {{ item.cwd | tojson }}{% endif %}{% if item.env is defined %},
+        "env": {{ item.env | tojson }}{% endif %}{% if item.timeoutSec is defined %},
+        "timeoutSec": {{ item.timeoutSec | int }}{% endif %}
+
+      }{% if not loop.last %},{% endif %}
+{% endfor %}
+{%- endmacro -%}
+{
+  "version": 1,
+  "hooks": {
+{%- set ns = namespace(sep="") %}
+{%- if session_start %}{{ ns.sep }}
+    "sessionStart": [{{ render_hooks(session_start) }}    ]
+{%- set ns.sep = "," %}{% endif %}
+{%- if prompt_hooks %}{{ ns.sep }}
+    "userPromptSubmitted": [{{ render_hooks(prompt_hooks) }}    ]
+{%- set ns.sep = "," %}{% endif %}
+{%- if pre_tool %}{{ ns.sep }}
+    "preToolUse": [{{ render_hooks(pre_tool) }}    ]
+{%- set ns.sep = "," %}{% endif %}
+{%- if post_tool %}{{ ns.sep }}
+    "postToolUse": [{{ render_hooks(post_tool) }}    ]
+{%- set ns.sep = "," %}{% endif %}
+{%- if error_hooks %}{{ ns.sep }}
+    "errorOccurred": [{{ render_hooks(error_hooks) }}    ]
+{%- set ns.sep = "," %}{% endif %}
+{%- if session_end %}{{ ns.sep }}
+    "sessionEnd": [{{ render_hooks(session_end) }}    ]
+{%- endif %}
+  }
+}

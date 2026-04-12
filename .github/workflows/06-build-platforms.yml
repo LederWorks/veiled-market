@@ -1,0 +1,149 @@
+name: "06 · Build Platform Variants"
+
+# Runs build-platforms.py whenever a plugin's commons/ source changes.
+# Generates plugins/<name>/claude/ and plugins/<name>/copilot/ from commons/.
+# Triggered automatically on push to main or PR, and manually via workflow_dispatch.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/*/commons/**"
+  pull_request:
+    paths:
+      - "plugins/*/commons/**"
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: "Plugin name to build (leave blank for all plugins with commons/)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run — print actions without writing files"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: build-platforms-${{ github.ref }}
+  cancel-in-progress: true
+
+# Deny all permissions at the workflow level; each job declares its minimum.
+permissions: {}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1 — Detect which plugins have a commons/ directory (or use the input)
+  # ---------------------------------------------------------------------------
+  setup:
+    name: Detect plugins to build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect plugins with commons/
+        id: detect
+        env:
+          PLUGIN_FILTER: ${{ inputs.plugin || '' }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, pathlib
+
+          plugin_filter = os.environ.get("PLUGIN_FILTER", "").strip()
+          plugins_root = pathlib.Path("plugins")
+
+          if plugin_filter:
+              # Manual override: use exactly the plugin specified
+              commons = plugins_root / plugin_filter / "commons"
+              if commons.is_dir():
+                  matrix = [{"name": plugin_filter}]
+              else:
+                  print(f"⚠️  No commons/ found for '{plugin_filter}' — nothing to build")
+                  matrix = []
+          else:
+              # Auto-detect all plugins that have a commons/ directory
+              matrix = [
+                  {"name": p.name}
+                  for p in sorted(plugins_root.iterdir())
+                  if p.is_dir() and (p / "commons").is_dir()
+              ]
+
+          print(f"Plugins to build: {[p['name'] for p in matrix]}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+          EOF
+
+  # ---------------------------------------------------------------------------
+  # Job 2 — Run build-platforms.py for each detected plugin
+  # ---------------------------------------------------------------------------
+  build:
+    name: "Build: ${{ matrix.name }}"
+    needs: setup
+    if: ${{ needs.setup.outputs.matrix != '[]' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.setup.outputs.matrix) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build ${{ matrix.name }} platform variants
+        env:
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          DRY_FLAG=""
+          if [ "$DRY_RUN" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          python3 scripts/build-platforms.py --plugin "${{ matrix.name }}" $DRY_FLAG
+
+      - name: Commit generated platform dirs
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "plugins/${{ matrix.name }}/claude/" "plugins/${{ matrix.name }}/copilot/" || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit for ${{ matrix.name }}"
+            exit 0
+          fi
+          git commit -m "chore(${{ matrix.name }}): build platform variants from commons/ [skip ci]"
+          # Retry push with rebase in case of concurrent commits
+          for attempt in 1 2 3; do
+            if git push origin HEAD; then
+              echo "✅ Pushed platform build for ${{ matrix.name }}"
+              break
+            fi
+            echo "Push attempt $attempt failed — rebasing and retrying..."
+            git stash
+            git pull --rebase origin HEAD
+            git stash pop || true
+            git add "plugins/${{ matrix.name }}/claude/" "plugins/${{ matrix.name }}/copilot/" || true
+            git diff --cached --quiet || git commit --amend --no-edit
+          done
+
+      - name: Summary
+        run: |
+          echo "## Build complete: ${{ matrix.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "🔍 **Dry run** — no files were written." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Generated directories:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            find "plugins/${{ matrix.name }}/claude" "plugins/${{ matrix.name }}/copilot" -type f 2>/dev/null | sort >> $GITHUB_STEP_SUMMARY || echo "(none yet — check build output)" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi

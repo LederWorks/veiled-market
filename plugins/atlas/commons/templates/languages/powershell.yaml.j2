@@ -1,0 +1,92 @@
+{#
+  Template: PowerShell Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/powershell.yaml.j2
+#}
+languages:
+  powershell:
+    file_associations:
+      "*.ps1": "powershell"
+      "*.psm1": "powershell"
+      "*.psd1": "powershell"
+      "*.ps1xml": "powershell"
+
+    settings:
+      "[powershell]":
+        editor.formatOnSave: true
+        editor.tabSize: 4
+        editor.insertSpaces: true
+        editor.wordWrap: "on"
+
+      powershell.scriptAnalysis.enable: true
+      powershell.scriptAnalysis.settingsPath: "./.vscode/PSScriptAnalyzerSettings.psd1"
+      powershell.codeFormatting.preset: "Stroustrup"
+      powershell.codeFormatting.autoCorrectAliases: true
+      powershell.codeFormatting.trimWhitespaceAroundPipe: true
+      powershell.codeFormatting.useCorrectCasing: true
+      powershell.integratedConsole.showOnStartup: false
+
+    required_extensions:
+      - "ms-vscode.powershell"
+
+    tasks:
+      - label: "PowerShell: Run Script"
+        type: "shell"
+        command: "pwsh"
+        args: ["-NonInteractive", "-File", "${file}"]
+        group: "build"
+
+      - label: "PowerShell: Lint (PSScriptAnalyzer)"
+        type: "shell"
+        command: "pwsh"
+        args:
+          - "-NonInteractive"
+          - "-Command"
+          - "Invoke-ScriptAnalyzer -Path . -Recurse -ReportSummary"
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "PowerShell: Test (Pester)"
+        type: "shell"
+        command: "pwsh"
+        args:
+          - "-NonInteractive"
+          - "-Command"
+          - "Invoke-Pester -Output Detailed"
+        group:
+          kind: "test"
+          isDefault: true
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "PowerShell: Format (PSScriptAnalyzer)"
+        type: "shell"
+        command: "pwsh"
+        args:
+          - "-NonInteractive"
+          - "-Command"
+          - "Get-ChildItem -Recurse -Filter '*.ps1' | ForEach-Object { Invoke-Formatter -ScriptDefinition (Get-Content $_.FullName -Raw) | Set-Content $_.FullName }"
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+    launch_configurations:
+      - name: "PowerShell: Launch Current File"
+        type: "PowerShell"
+        request: "launch"
+        script: "${file}"
+        cwd: "${workspaceFolder}"
+
+      - name: "PowerShell: Attach to Host Process"
+        type: "PowerShell"
+        request: "attach"
+
+    linting:
+      enabled: true
+      tools:
+        - "PSScriptAnalyzer"
+      config_files:
+        - ".vscode/PSScriptAnalyzerSettings.psd1"

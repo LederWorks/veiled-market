@@ -1,0 +1,816 @@
+{
+  "templates": [
+    {
+      "scope": "project",
+      "name": "copilot-instructions",
+      "file": "plugins/atlas/commons/templates/.github/copilot-instructions.md.j2",
+      "version": "2.0.0",
+      "description": "Project identity stub — generates .github/copilot-instructions.md (≤150 lines: architecture, build commands, navigation)",
+      "generates": [
+        ".github/copilot-instructions.md"
+      ],
+      "required_variables": [
+        "project_name",
+        "project_description"
+      ],
+      "optional_variables": [
+        "has_instructions_dir",
+        "inventory_items",
+        "prerequisites",
+        "build_commands",
+        "architecture_notes",
+        "test_commands",
+        "modules"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "instructions",
+      "file": "plugins/atlas/commons/templates/.github/instructions/instructions.md.j2",
+      "version": "1.1.0",
+      "description": "Technology-specific instruction stub for .github/instructions/ — scoped via applyTo frontmatter",
+      "generates": [
+        ".github/instructions/{{ slug }}.instructions.md"
+      ],
+      "required_variables": [
+        "slug",
+        "apply_to_glob",
+        "title"
+      ],
+      "optional_variables": [
+        "sections"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "project.hooks.json",
+      "file": "plugins/atlas/commons/templates/.github/hooks/hooks.json.j2",
+      "version": "1.0.0",
+      "description": "GitHub Copilot CLI project hooks — all 6 lifecycle events (sessionStart, userPromptSubmitted, preToolUse, postToolUse, errorOccurred, sessionEnd)",
+      "output": ".github/hooks/hooks.json",
+      "required_variables": [],
+      "optional_variables": [
+        "hooks"
+      ],
+      "condition": "copilot_cli in enabled_ides and github in enabled_platforms"
+    },
+    {
+      "scope": "project",
+      "name": "LICENSE",
+      "file": "plugins/atlas/commons/templates/resources/LICENSE.j2",
+      "version": "1.0.0",
+      "description": "Apache-2.0 LICENSE file with OTP Bank copyright",
+      "generates": [
+        "LICENSE"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.terraform",
+      "file": "plugins/atlas/commons/templates/languages/terraform.yaml.j2",
+      "version": "1.0.0",
+      "description": "Terraform VS Code config fragment — file associations, settings, extensions, tasks",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.python",
+      "file": "plugins/atlas/commons/templates/languages/python.yaml.j2",
+      "version": "1.0.0",
+      "description": "Python VS Code config fragment — settings, ruff formatter, pytest tasks, launch configs",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json",
+        ".vscode/launch.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.go",
+      "file": "plugins/atlas/commons/templates/languages/go.yaml.j2",
+      "version": "1.0.0",
+      "description": "Go VS Code config fragment — gopls, golangci-lint, build/test tasks, launch configs",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json",
+        ".vscode/launch.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.typescript",
+      "file": "plugins/atlas/commons/templates/languages/typescript.yaml.j2",
+      "version": "1.0.0",
+      "description": "TypeScript/JS VS Code config fragment — prettier, eslint, jest tasks; optional frontend/backend/testing types",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json",
+        ".vscode/launch.json"
+      ],
+      "optional_variables": [
+        "types"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.markdown",
+      "file": "plugins/atlas/commons/templates/languages/markdown.yaml.j2",
+      "version": "1.0.0",
+      "description": "Markdown VS Code config fragment — markdownlint, link-check tasks",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.yaml",
+      "file": "plugins/atlas/commons/templates/languages/yaml.yaml.j2",
+      "version": "1.0.0",
+      "description": "YAML VS Code config fragment — redhat yaml extension, yamllint task",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.json",
+      "file": "plugins/atlas/commons/templates/languages/json.yaml.j2",
+      "version": "1.0.0",
+      "description": "JSON VS Code config fragment — jsonlint, prettier tasks",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.shell",
+      "file": "plugins/atlas/commons/templates/languages/shell.yaml.j2",
+      "version": "1.0.0",
+      "description": "Shell script VS Code config fragment — shellcheck, shfmt, fish support",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json",
+        ".vscode/launch.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.powershell",
+      "file": "plugins/atlas/commons/templates/languages/powershell.yaml.j2",
+      "version": "1.0.0",
+      "description": "PowerShell VS Code config fragment — PSScriptAnalyzer, Pester tasks, launch configs",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json",
+        ".vscode/launch.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.sql",
+      "file": "plugins/atlas/commons/templates/languages/sql.yaml.j2",
+      "version": "1.0.0",
+      "description": "SQL VS Code config fragment — mssql extension, sqlfluff lint/format tasks",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "lang.j2",
+      "file": "plugins/atlas/commons/templates/languages/j2.yaml.j2",
+      "version": "1.0.0",
+      "description": "Jinja2 template language VS Code config fragment — wholroyd.jinja, djlint tasks",
+      "generates": [
+        ".vscode/settings.json",
+        ".vscode/extensions.json",
+        ".vscode/tasks.json"
+      ],
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "vscode.settings",
+      "file": "plugins/atlas/commons/templates/.vscode/settings.json.j2",
+      "version": "1.0.0",
+      "description": "Composite VS Code settings.json — merges settings from all detected language fragments",
+      "generates": [
+        ".vscode/settings.json"
+      ],
+      "required_variables": [
+        "detected_languages"
+      ],
+      "optional_variables": [
+        "extra_settings"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "vscode.extensions",
+      "file": "plugins/atlas/commons/templates/.vscode/extensions.json.j2",
+      "version": "1.0.0",
+      "description": "Composite VS Code extensions.json — merges required + recommended extensions from all detected language fragments",
+      "generates": [
+        ".vscode/extensions.json"
+      ],
+      "required_variables": [
+        "detected_languages"
+      ],
+      "optional_variables": [
+        "extra_extensions"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "vscode.tasks",
+      "file": "plugins/atlas/commons/templates/.vscode/tasks.json.j2",
+      "version": "1.0.0",
+      "description": "Composite VS Code tasks.json — concatenates tasks from all detected language fragments",
+      "generates": [
+        ".vscode/tasks.json"
+      ],
+      "required_variables": [
+        "detected_languages"
+      ],
+      "optional_variables": [
+        "extra_tasks"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "vscode.launch",
+      "file": "plugins/atlas/commons/templates/.vscode/launch.json.j2",
+      "version": "1.0.0",
+      "description": "Composite VS Code launch.json — merges launch configurations from detected language fragments that define them",
+      "generates": [
+        ".vscode/launch.json"
+      ],
+      "required_variables": [
+        "detected_languages"
+      ],
+      "optional_variables": [
+        "extra_configurations"
+      ],
+      "conditional": "has_launch_configs"
+    },
+    {
+      "scope": "project",
+      "name": "instructions.aws",
+      "file": "plugins/atlas/commons/references/stubs/aws.instructions.j2",
+      "version": "1.0.0",
+      "description": "AWS cloud development standards",
+      "output": ".github/instructions/aws.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.azure-devops",
+      "file": "plugins/atlas/commons/references/stubs/azure-devops.instructions.j2",
+      "version": "1.0.0",
+      "description": "Azure DevOps pipeline conventions",
+      "output": ".github/instructions/azure-devops.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "azure-pipelines.yml,azure-pipelines/**/*.yml"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.azure",
+      "file": "plugins/atlas/commons/references/stubs/azure.instructions.j2",
+      "version": "1.0.0",
+      "description": "Azure cloud development standards",
+      "output": ".github/instructions/azure.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.bicep,**/*.json,**/*.tf,**/*.tfvars,**/*.yaml,**/*.yml"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.bash",
+      "file": "plugins/atlas/commons/references/stubs/bash.instructions.j2",
+      "version": "1.0.0",
+      "description": "Bash scripting conventions",
+      "output": ".github/instructions/bash.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.sh"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.cursor",
+      "file": "plugins/atlas/commons/references/stubs/cursor.instructions.j2",
+      "version": "1.0.0",
+      "description": "Cursor IDE configuration conventions",
+      "output": ".github/instructions/cursor.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": ".cursor/**/*,.cursorignore,.cursorrules"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.gcp",
+      "file": "plugins/atlas/commons/references/stubs/gcp.instructions.j2",
+      "version": "1.0.0",
+      "description": "Google Cloud Platform development standards",
+      "output": ".github/instructions/gcp.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.git",
+      "file": "plugins/atlas/commons/references/stubs/git.instructions.j2",
+      "version": "1.0.0",
+      "description": "Git repository configuration conventions",
+      "output": ".github/instructions/git.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": ".gitignore,.gitattributes,.gitmodules,**/.gitignore,**/.gitattributes"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.svn",
+      "file": "plugins/atlas/commons/references/stubs/svn.instructions.j2",
+      "version": "1.0.0",
+      "description": "Apache Subversion repository conventions",
+      "output": ".github/instructions/svn.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": ".svnignore,**/.svnignore,**/svn-commit.tmp"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.github",
+      "file": "plugins/atlas/commons/references/stubs/github.instructions.j2",
+      "version": "1.0.0",
+      "description": "GitHub Actions and workflow conventions",
+      "output": ".github/instructions/github.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": ".github/**/*.yml,.github/**/*.yaml,.github/**/*.md"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.go",
+      "file": "plugins/atlas/commons/references/stubs/go.instructions.j2",
+      "version": "1.0.0",
+      "description": "Go development standards",
+      "output": ".github/instructions/go.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.go,go.mod,go.sum"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.jetbrains",
+      "file": "plugins/atlas/commons/references/stubs/jetbrains.instructions.j2",
+      "version": "1.0.0",
+      "description": "JetBrains IDE configuration conventions",
+      "output": ".github/instructions/jetbrains.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": ".idea/**/*"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.jinja2",
+      "file": "plugins/atlas/commons/references/stubs/jinja2.instructions.j2",
+      "version": "1.0.0",
+      "description": "Jinja2 template development standards",
+      "output": ".github/instructions/jinja2.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.j2,**/*.jinja,**/*.jinja2,templates/**/*"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.json",
+      "file": "plugins/atlas/commons/references/stubs/json.instructions.j2",
+      "version": "1.0.0",
+      "description": "JSON authoring conventions",
+      "output": ".github/instructions/json.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.json,**/*.jsonc,**/*.json5"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.markdown",
+      "file": "plugins/atlas/commons/references/stubs/markdown.instructions.j2",
+      "version": "1.0.0",
+      "description": "Markdown writing standards",
+      "output": ".github/instructions/markdown.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.md,**/*.markdown"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.oci",
+      "file": "plugins/atlas/commons/references/stubs/oci.instructions.j2",
+      "version": "1.0.0",
+      "description": "Oracle Cloud Infrastructure standards",
+      "output": ".github/instructions/oci.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.powershell",
+      "file": "plugins/atlas/commons/references/stubs/powershell.instructions.j2",
+      "version": "1.0.0",
+      "description": "PowerShell scripting conventions",
+      "output": ".github/instructions/powershell.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.ps1"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.python",
+      "file": "plugins/atlas/commons/references/stubs/python.instructions.j2",
+      "version": "1.0.0",
+      "description": "Python development standards",
+      "output": ".github/instructions/python.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.py,**/*.pyw,**/*.pyi,**/pyproject.toml,**/setup.py,**/requirements*.txt"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.scripts",
+      "file": "plugins/atlas/commons/references/stubs/scripts.instructions.j2",
+      "version": "1.0.0",
+      "description": "Cross-platform script development standards",
+      "output": ".github/instructions/scripts.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "scripts/**/*.ps1,scripts/**/*.sh,scripts/**/*.py"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.security",
+      "file": "plugins/atlas/commons/references/stubs/security.instructions.j2",
+      "version": "1.0.0",
+      "description": "Security coding standards",
+      "output": ".github/instructions/security.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.go,**/*.py,**/*.ts,**/*.js,**/*.tsx,**/*.jsx"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.sql",
+      "file": "plugins/atlas/commons/references/stubs/sql.instructions.j2",
+      "version": "1.0.0",
+      "description": "SQL query and schema conventions",
+      "output": ".github/instructions/sql.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.sql,**/migrations/*.sql,**/schema/*.sql"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.terraform",
+      "file": "plugins/atlas/commons/references/stubs/terraform.instructions.j2",
+      "version": "1.0.0",
+      "description": "Terraform module development standards",
+      "output": ".github/instructions/terraform.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.tf,**/*.tfvars"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.typescript",
+      "file": "plugins/atlas/commons/references/stubs/typescript.instructions.j2",
+      "version": "1.0.0",
+      "description": "TypeScript/JavaScript development standards",
+      "output": ".github/instructions/typescript.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.ts,**/*.tsx,**/*.js,**/*.jsx"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.vscode",
+      "file": "plugins/atlas/commons/references/stubs/vscode.instructions.j2",
+      "version": "1.0.0",
+      "description": "VS Code configuration conventions",
+      "output": ".github/instructions/vscode.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": ".vscode/**/*"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.yaml",
+      "file": "plugins/atlas/commons/references/stubs/yaml.instructions.j2",
+      "version": "1.0.0",
+      "description": "YAML authoring conventions",
+      "output": ".github/instructions/yaml.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**/*.yaml,**/*.yml,**/*.yaml.j2,**/*.yml.j2"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "config.features",
+      "file": "plugins/atlas/commons/templates/.config/features.yaml.j2",
+      "version": "1.0.0",
+      "description": "Consolidated AI platform feature flags — all 5 platforms with conditional blocks",
+      "output": ".config/features.yaml",
+      "required_variables": [
+        "enabled_platforms"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "config.atlas",
+      "file": "plugins/atlas/commons/templates/.config/atlas.json.j2",
+      "version": "1.0.0",
+      "description": "Atlas state store — enabled IDEs, platforms, languages, git mode",
+      "output": ".config/atlas.json",
+      "required_variables": [
+        "enabled_platforms",
+        "git_mode"
+      ],
+      "condition": "always"
+    },
+    {
+      "scope": "project",
+      "name": "config.repository",
+      "file": "plugins/atlas/commons/templates/.config/repository.yaml.j2",
+      "version": "1.0.0",
+      "description": "Repository metadata — detected languages, types, CI platform, git mode",
+      "output": ".config/repository.yaml",
+      "required_variables": [
+        "detected_languages",
+        "repo_types",
+        "ci_platform",
+        "git_mode"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "config.workspace",
+      "file": "plugins/atlas/commons/templates/.config/workspace.yaml.j2",
+      "version": "1.0.0",
+      "description": "Workspace overrides — extra extensions, tasks, settings; never overwritten by update",
+      "output": ".config/workspace.yaml",
+      "required_variables": []
+    },
+    {
+      "scope": "project",
+      "name": "config.languages",
+      "file": "plugins/atlas/commons/templates/.config/languages.yaml.j2",
+      "version": "1.0.0",
+      "description": "Detected language config summary — generated by project, do not hand-edit",
+      "output": ".config/languages.yaml",
+      "required_variables": [
+        "detected_languages_summary"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "config.marketplace",
+      "file": "plugins/atlas/commons/templates/.config/marketplace.yaml.j2",
+      "version": "1.0.0",
+      "description": "Target repo marketplace installation tracker — records which plugins are installed in a project repo",
+      "output": ".config/marketplace.yaml",
+      "required_variables": [
+        "marketplace_source",
+        "marketplace_version",
+        "installed_at"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "gitignore",
+      "file": "plugins/atlas/commons/templates/.gitignore.j2",
+      "version": "1.0.0",
+      "description": "Project .gitignore — OS, editor, secrets, and per-language ignore patterns; language-gated sections for terraform, python, go, typescript, java, rust",
+      "generates": [
+        ".gitignore"
+      ],
+      "required_variables": [
+        "detected_languages"
+      ],
+      "optional_variables": [],
+      "conditional": "git in enabled_platforms"
+    },
+    {
+      "scope": "project",
+      "name": "readme",
+      "file": "plugins/atlas/commons/templates/README.md.j2",
+      "version": "1.0.0",
+      "description": "Project README.md — title, overview, technology list, language-specific getting-started sections (terraform, python, typescript, go), contributing, license",
+      "generates": [
+        "README.md"
+      ],
+      "required_variables": [
+        "project_name"
+      ],
+      "optional_variables": [
+        "description",
+        "detected_languages",
+        "terraform_version",
+        "cloud_targets",
+        "repo_url",
+        "package_manager",
+        "license",
+        "maintainers"
+      ]
+    },
+    {
+      "scope": "project",
+      "name": "vscode.workspace",
+      "file": "plugins/atlas/commons/templates/project.code-workspace.j2",
+      "version": "1.0.0",
+      "description": "VS Code workspace file — multi-root folder list, extension recommendations, and workspace-level settings overrides sourced from .config/workspace.yaml",
+      "generates": [
+        "{{ project_name }}.code-workspace"
+      ],
+      "required_variables": [
+        "project_name"
+      ],
+      "optional_variables": [
+        "workspace_folders",
+        "workspace_extensions",
+        "workspace_settings"
+      ],
+      "condition": "vscode in enabled_ides"
+    },
+    {
+      "scope": "project",
+      "name": "changelog",
+      "file": "plugins/atlas/commons/templates/CHANGELOG.md.j2",
+      "version": "1.0.0",
+      "description": "Project CHANGELOG.md — Keep-a-Changelog format with Semantic Versioning; includes [Unreleased] section and initial version stub with optional repo diff links",
+      "generates": [
+        "CHANGELOG.md"
+      ],
+      "required_variables": [
+        "project_name"
+      ],
+      "optional_variables": [
+        "initial_version",
+        "initial_date",
+        "repo_url"
+      ],
+      "conditional": "git in enabled_platforms or svn in enabled_platforms"
+    },
+    {
+      "scope": "project",
+      "name": "vscode.mcp",
+      "file": "plugins/atlas/commons/templates/.vscode/mcp.json.j2",
+      "version": "1.0.0",
+      "description": "VS Code workspace MCP config (.vscode/mcp.json) — servers key, inputs section for secure prompting of API keys; supports stdio (npx/python/docker) and http server types. Different schema from plugin .mcp.json.",
+      "generates": [
+        ".vscode/mcp.json"
+      ],
+      "required_variables": [
+        "mcp_servers"
+      ],
+      "optional_variables": [
+        "mcp_inputs"
+      ],
+      "condition": "vscode in enabled_ides and mcp_servers is defined"
+    },
+    {
+      "scope": "project",
+      "name": "ado.pull_request_template",
+      "file": "plugins/atlas/commons/templates/.azuredevops/pull_request_template/branches/main.md.j2",
+      "version": "1.0.0",
+      "description": "Azure DevOps pull request template with sections for features, enhancements, bug fixes, and conditional infra/app checklist items",
+      "generates": [
+        ".azuredevops/pull_request_template/branches/main.md"
+      ],
+      "required_variables": [
+        "repo_name"
+      ],
+      "optional_variables": [
+        "features",
+        "enhancements",
+        "bug_fixes",
+        "types"
+      ],
+      "condition": "azure_devops in enabled_platforms"
+    },
+    {
+      "scope": "project",
+      "name": "claude.md",
+      "file": "plugins/atlas/commons/templates/CLAUDE.md.j2",
+      "version": "1.0.0",
+      "description": "Claude Code project context file",
+      "generates": [
+        "CLAUDE.md"
+      ],
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**"
+      },
+      "condition": "claude_code in enabled_ides"
+    },
+    {
+      "scope": "project",
+      "name": "claude.mcp",
+      "file": "plugins/atlas/commons/templates/.claude/mcp.json.j2",
+      "version": "1.0.0",
+      "description": "Claude Code MCP server configuration",
+      "generates": [
+        ".claude/mcp.json"
+      ],
+      "required_variables": [
+        "mcp_servers"
+      ],
+      "optional_variables": [
+        "mcp_inputs"
+      ],
+      "metadata": {
+        "applyTo": "**"
+      },
+      "condition": "claude_code in enabled_ides and mcp_servers is defined"
+    },
+    {
+      "scope": "project",
+      "name": "instructions.claude",
+      "file": "plugins/atlas/commons/references/stubs/claude.instructions.j2",
+      "version": "1.0.0",
+      "description": "Claude Code conventions stub",
+      "stubTarget": ".github/instructions/claude.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**"
+      }
+    },
+    {
+      "scope": "project",
+      "name": "instructions.ide-universal",
+      "file": "plugins/atlas/commons/references/stubs/ide-universal.instructions.j2",
+      "version": "1.0.0",
+      "description": "IDE-agnostic best practices stub",
+      "stubTarget": ".github/instructions/ide-universal.instructions.md",
+      "required_variables": [],
+      "metadata": {
+        "applyTo": "**"
+      }
+    }
+  ]
+}

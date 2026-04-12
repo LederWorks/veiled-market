@@ -1,0 +1,150 @@
+{#
+  Template: Gcp instruction stub
+  Output:   .github/instructions/gcp.instructions.md
+  Scope:    project (target repo generation)
+#}
+---
+applyTo: "**/*"
+---
+
+# Google Cloud Platform (GCP) Development Standards
+
+Apply these conventions when generating or reviewing GCP infrastructure code and application configurations.
+
+---
+
+## Resource hierarchy
+
+Follow the standard GCP hierarchy: **Organisation → Folder → Project → Resources**.
+
+Design modules to operate at the appropriate hierarchy level. Support both single-project and multi-project deployments. Use folders to group projects by environment or business unit.
+
+---
+
+## Resource naming
+
+```
+<workload>-<environment>-<resource-type>[-<qualifier>]
+```
+
+Examples: `payments-prod-gke`, `data-staging-cloudsql-primary`, `auth-dev-function-tokenizer`.
+
+Observe per-service character limits (GCS bucket names are globally unique and must be lowercase).
+
+---
+
+## Labelling strategy
+
+Apply labels to all resources. Minimum required:
+
+| Label | Values |
+|---|---|
+| `environment` | `prod`, `staging`, `dev` |
+| `project` | workload name (lowercase) |
+| `team` | owning squad |
+| `managed-by` | `terraform`, `gcloud` |
+
+Enforce via Organisation Policy or automated validation.
+
+---
+
+## IAM and access control
+
+- Follow **least privilege** — use predefined roles when sufficient; create custom roles only when necessary and document the reason
+- Use **Workload Identity Federation** for service-to-service authentication; avoid service account key files
+- Rotate service account keys immediately if file-based keys cannot be avoided
+- Avoid `roles/owner` and `roles/editor` at project level — use granular roles
+- Audit all IAM changes via **Cloud Audit Logs**
+
+```hcl
+resource "google_project_iam_member" "app" {
+  project = var.project_id
+  role    = "roles/run.invoker"
+  member  = "serviceAccount:${google_service_account.app.email}"
+}
+```
+
+---
+
+## Secrets management
+
+- Use **Secret Manager** for application secrets, API keys, and database credentials
+- Enable automatic rotation where possible
+- Reference secrets by resource name — never embed values in code or Terraform variables
+
+```hcl
+data "google_secret_manager_secret_version" "db_password" {
+  secret = "projects/${var.project_id}/secrets/db-password/versions/latest"
+}
+```
+
+---
+
+## Networking
+
+- Deploy workloads in a **VPC** with private subnets; use **Cloud NAT** for outbound internet access
+- Use **Private Google Access** so VMs without public IPs can reach Google APIs
+- Use **VPC Service Controls** for sensitive data perimeters
+- Restrict firewall rules to minimum required ports and source ranges; deny `0.0.0.0/0` ingress except on load balancers (port 443)
+
+---
+
+## Encryption
+
+- Encryption at rest is on by default; use **Customer-Managed Encryption Keys (CMEK)** for sensitive workloads
+- Enforce TLS 1.2+ in transit
+- Use **Cloud KMS** for key management; enable automatic key rotation
+
+---
+
+## Terraform on GCP
+
+- Store Terraform state in **GCS with object versioning enabled**
+- Use a dedicated Terraform service account — authenticate via Workload Identity from CI/CD; use Application Default Credentials locally
+- Enable required APIs before provisioning resources; handle API activation timing in Terraform
+
+```hcl
+terraform {
+  backend "gcs" {
+    bucket  = "myorg-terraform-state"
+    prefix  = "myapp/prod"
+  }
+}
+
+resource "google_project_service" "run" {
+  project = var.project_id
+  service = "run.googleapis.com"
+  disable_on_destroy = false
+}
+```
+
+---
+
+## Observability
+
+- Enable **Cloud Audit Logs** (Admin Activity and Data Access) on all projects
+- Use **Cloud Monitoring** for SLI/SLO dashboards and alerting
+- Use **Cloud Trace** and **Cloud Profiler** for distributed tracing and performance analysis
+- Forward logs to a centralised **Log Analytics** bucket for long-term retention
+
+---
+
+## Cost management
+
+- Attach labels to all resources for billing attribution
+- Configure **Billing Budgets** with email or Pub/Sub alerting
+- Use **Committed Use Discounts** for stable GCE and Cloud SQL workloads
+- Review **recommender** findings regularly (underutilised resources, oversized VMs)
+
+---
+
+## Organisation policies
+
+Common recommended constraints:
+
+| Policy | Setting |
+|---|---|
+| `compute.requireOsLogin` | Enforced |
+| `compute.vmExternalIpAccess` | Deny all (allowlist exceptions only) |
+| `iam.disableServiceAccountKeyCreation` | Enforced (prefer Workload Identity) |
+| `storage.uniformBucketLevelAccess` | Enforced |

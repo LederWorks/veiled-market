@@ -143,6 +143,15 @@
               "Writing"
             ]
           }
+        },
+        "platform_sources": {
+          "type": "object",
+          "description": "Platform-specific source paths for dual-build plugins. Used by finalize.py to write different source values into each marketplace file. Stripped before writing generated marketplace.json output files.",
+          "additionalProperties": false,
+          "properties": {
+            "claude":  { "type": "string", "description": "Source path for Claude Code marketplace (use ./ prefix, e.g. './plugins/socrates/claude')." },
+            "copilot": { "type": "string", "description": "Source path for Copilot CLI marketplace (no ./ prefix, e.g. 'plugins/socrates/copilot')." }
+          }
         }
       }
     },

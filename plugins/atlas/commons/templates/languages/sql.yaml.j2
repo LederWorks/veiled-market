@@ -1,0 +1,55 @@
+{#
+  Template: SQL Language Configuration
+  Output:   merged into .vscode/settings.json, extensions.json, tasks.json
+  Scope:    project (target repo generation)
+  Variables: (none required — standalone data fragment)
+  Source:   ported from myrepos/templates/languages/sql.yaml.j2
+#}
+languages:
+  sql:
+    file_associations:
+      "*.sql": "sql"
+      "*.ddl": "sql"
+      "*.dml": "sql"
+
+    settings:
+      "[sql]":
+        editor.formatOnSave: true
+        editor.tabSize: 2
+        editor.insertSpaces: true
+        editor.wordWrap: "on"
+
+      sql.format.keywordCase: "upper"
+      sql.format.identifierCase: "lower"
+      sqltools.useNodeRuntime: true
+
+    required_extensions:
+      - "ms-mssql.mssql"
+
+    recommended_extensions:
+      - "ms-mssql.sql-database-projects-vscode"
+      - "mtxr.sqltools"
+
+    tasks:
+      - label: "SQL: Format (sqlfluff)"
+        type: "shell"
+        command: "sqlfluff"
+        args: ["format", ".", "--dialect", "ansi"]
+        group: "build"
+        options:
+          cwd: "${workspaceFolder}"
+
+      - label: "SQL: Lint (sqlfluff)"
+        type: "shell"
+        command: "sqlfluff"
+        args: ["lint", ".", "--dialect", "ansi"]
+        group: "test"
+        options:
+          cwd: "${workspaceFolder}"
+
+    linting:
+      enabled: true
+      tools:
+        - "sqlfluff"
+      config_files:
+        - ".sqlfluff"
