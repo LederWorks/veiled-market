@@ -1,18 +1,13 @@
 {
   "name": "terraformer",
-  "description": "A plugin for generating and managing Terraform configurations with enhanced capabilities.",
+  "description": "Auto-generated terraformer plugin (AI unavailable)",
   "version": "0.1.0",
   "keywords": [
-    "terraform",
-    "infrastructure-as-code",
-    "automation"
+    "terraformer"
   ],
-  "category": "DevOps",
+  "category": "automation",
   "tags": [
-    "terraform",
-    "cloud",
-    "automation",
-    "infrastructure"
+    "terraformer"
   ],
   "agents": "agents/",
   "skills": "skills/"
